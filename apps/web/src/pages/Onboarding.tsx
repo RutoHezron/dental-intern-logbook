@@ -1,15 +1,16 @@
 import { addDays, displayDate, KMPDC_DENTAL_3, startOfIsoWeek, todayISO, weekday, type RotationCode } from '@logbook/core';
 import { ArrowDown, ArrowUp, ShieldCheck } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router';
+import { Navigate } from 'react-router';
 import { LevelLadder, ToneNote } from '../components/ui';
 import { loadDemo, RepoError, setupInternship } from '../data/repo';
 import { ROTATION_VAR } from '../lib/format';
+import { useAppData } from '../state/AppData';
 
 const DEMO_END = '2026-10-11';
 
 export function OnboardingPage() {
-  const navigate = useNavigate();
+  const { loaded, ix } = useAppData();
   const [busy, setBusy] = useState<'demo' | 'setup' | null>(null);
   const [error, setError] = useState<string | null>(null);
   const today = todayISO();
@@ -25,8 +26,8 @@ export function OnboardingPage() {
 
   const startDemo = async () => {
     setBusy('demo');
+    // The redirect below happens once the live data shows the new internship.
     await loadDemo(today < DEMO_END ? today : DEMO_END);
-    navigate('/', { replace: true });
   };
 
   const submit = async (e: FormEvent) => {
@@ -35,7 +36,6 @@ export function OnboardingPage() {
     setBusy('setup');
     try {
       await setupInternship({ ...form, rotationOrder: order, supervisors: [] });
-      navigate('/', { replace: true });
     } catch (err) {
       setError(err instanceof RepoError ? err.message : 'Could not create the internship. Try again.');
       setBusy(null);
@@ -48,6 +48,10 @@ export function OnboardingPage() {
     [next[i], next[j]] = [next[j]!, next[i]!];
     setOrder(next);
   };
+
+  // Navigate only when the app's live data includes the internship; navigating
+  // straight after the write races the live query and bounces back here.
+  if (loaded && ix) return <Navigate to="/" replace />;
 
   let cursor = form.periodFrom;
 

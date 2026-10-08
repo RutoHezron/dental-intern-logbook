@@ -38,7 +38,7 @@ export function EntryChip({ entry }: { entry: LogbookEntry }) {
         : { bg: 'transparent', fg: 'var(--ink-2)', b: 'var(--line-strong)' };
   return (
     <span
-      className="code inline-flex items-center gap-1 rounded-[6px] border px-1.5 text-[11px] leading-5"
+      className="code relative inline-flex items-center gap-1 rounded-[6px] border px-1.5 text-[11px] leading-5"
       style={{ background: tone.bg, color: tone.fg, borderColor: tone.b, borderStyle: entry.status === 'submitted' ? 'dashed' : 'solid' }}
       title={`${entry.requirementCode} · ${STATUS_LABEL[entry.status]}`}
     >

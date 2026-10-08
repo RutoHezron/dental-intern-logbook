@@ -14,7 +14,7 @@ export function LevelLadder({ level, size = 18, label = true }: { level: Level |
   const w = size * 1.2;
   const bar = w / 5 - 1.5;
   return (
-    <span className="inline-flex items-center gap-1.5" title={`Level ${level}: ${LEVEL_NAMES[level]}`}>
+    <span className="relative inline-flex items-center gap-1.5" title={`Level ${level}: ${LEVEL_NAMES[level]}`}>
       <svg width={w} height={size} viewBox={`0 0 ${w} ${size}`} aria-hidden="true">
         {STEP_HEIGHTS.map((h, i) => (
           <rect
@@ -194,7 +194,7 @@ export function Empty({ title, children, action }: { title: string; children?: R
 
 export function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex rounded-[10px] border border-line-strong bg-surface p-0.5">
+    <div role="radiogroup" aria-label={label} className="inline-flex max-w-full flex-wrap rounded-[10px] border border-line-strong bg-surface p-0.5">
       {options.map((o) => (
         <button
           key={o.value}

@@ -179,6 +179,11 @@
     outline-offset: 2px;
     border-radius: 6px;
   }
+  /* Horizontal scrollers contain their absolutely positioned descendants
+     (e.g. screen-reader labels), so nothing escapes and widens the page. */
+  .overflow-x-auto {
+    position: relative;
+  }
   .tabular {
     font-variant-numeric: tabular-nums;
   }
