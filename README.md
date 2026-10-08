@@ -6,7 +6,7 @@ A clinical logbook, reflection diary and progressive reporting app for dental in
 
 An intern logs a visit in under a minute: patient number, teeth, procedure, their level and the supervisor. The app works out which KMPDC logbook codes the visit counts toward, using transparent rules. Code progress, weekly, monthly and rotation reports, cumulative internship statistics, competency tracking and the final portfolio then follow from those entries. Nothing is typed twice.
 
-It is local-first. Every screen works offline on the device, and records sync to a Postgres backend when one is configured and the intern is signed in.
+**The logbook lives on the intern's phone.** On first launch the app sets up its database on the phone and asks the system to keep it permanently. It works with no signal and no account. The Android app also backs itself up every day to `Documents/DentalLogbook` on the phone. Signing in to a sync server is optional and adds backup and multi-device use.
 
 > **Privacy by design.** No patient names, phone numbers or ID numbers are collected, only the hospital number the paper logbook already asks for. All demo data is fictional.
 
@@ -24,7 +24,10 @@ It is local-first. Every screen works offline on the device, and records sync to
 | **Portfolio** | Internship overview, a month-by-month progress timeline, procedure portfolio, strengths and gaps (worded as *recorded exposure*), learning journey, and a reflection draft in which every sentence cites the data it uses. |
 | **Dashboard** | Headline numbers, reminders, an activity chart, current-rotation codes and pace, insights labelled *recorded data* or *interpretation*, and exposure gaps per rotation. |
 | **Rotations** | Calendar with extensions; entries move to the matching rotation automatically. Supervisors and objectives. |
-| **Sync** | Outbox-based offline sync to Supabase/Postgres with email one-time-code sign-in. Status shows synced, pending or error. |
+| **Phone storage** | On-device database set up at first launch, with persistent storage requested and shown (location, size, kept permanently). Native app: automatic daily backups to `Documents/DentalLogbook`, last 7 kept, restorable. Browser: share-sheet backups and a weekly reminder. |
+| **Supervisor sign-off** | On the intern's phone and offline: the supervisor reviews pending entries with prompts (late, duplicate, paediatric age, first jump to a high level…), verifies, adjusts the level or returns with a comment, and signs with their own PIN. Each decision becomes a hash-chained verification. |
+| **Android app** | The same app wrapped with Capacitor (`apps/web/android`). Data stays in app-private storage, and Android cloud backup is disabled. |
+| **Sync (optional)** | Outbox-based offline sync to Supabase/Postgres with email one-time-code sign-in. Status shows synced, pending or error. |
 
 ## Repository layout
 
@@ -59,13 +62,13 @@ Open http://localhost:5173 and choose **Open the demo** (Dr Alex Mwangi, a ficti
 npm test
 ```
 
-This runs 126 unit and integration tests across three packages:
+This runs 145 unit and integration tests across three packages:
 
 | Package | Tests | Covers |
 |---|---|---|
-| `@logbook/core` | 92 | Catalogue integrity (42 codes / 762 minimums), the blueprint's worked mapping examples, counting rules, reconciliation, hash chain, validation and the identifier guard, periods, compounding (weekly and monthly sums equal the cumulative total), reports, snapshots, portfolio wording, deterministic synthetic data |
-| `@logbook/db` | 17 | Real migrations in PGlite: no identity columns on patients, push/pull round trip, cursors, tombstones, per-change rejection, row-level isolation, ownership pinning, verified-entry guard, append-only verifications, audit trail |
-| `@logbook/web` | 17 | Repository against IndexedDB, Quick Entry UI flow, and the sync engine end to end (device ↔ Postgres, second-device restore, rejected changes, local-edit protection) |
+| `@logbook/core` | 98 | Catalogue integrity (42 codes / 762 minimums), the blueprint's worked mapping examples, counting rules, reconciliation, hash chain, validation and the identifier guard, periods, compounding (weekly and monthly sums equal the cumulative total), reports, snapshots, portfolio wording, deterministic synthetic data |
+| `@logbook/db` | 21 | Real migrations in PGlite: no identity columns on patients, push/pull round trip, cursors, tombstones, per-change rejection, row-level isolation, ownership pinning, verified-entry guard, append-only verifications, audit trail |
+| `@logbook/web` | 26 | Repository against IndexedDB (including PIN sign-off and its hash chain), on-phone storage and backup reminders, Quick Entry UI flow, and the sync engine end to end (device ↔ Postgres, second-device restore, sign-off synced, edits to verified entries refused, local-edit protection) |
 
 The end-to-end browser tests (16) run against the production build with the service worker, using the locally installed Chrome:
 
@@ -80,6 +83,28 @@ npm run build -w @logbook/web
 ```
 
 The output in `apps/web/dist` is static files. See [docs/04-deployment.md](docs/04-deployment.md).
+
+### Android app
+
+Requirements: Android Studio, which provides the SDK and Java.
+
+To build the web app, copy it into the Android project and open it in Android Studio:
+
+```bash
+npm run android:sync -w @logbook/web
+```
+
+```bash
+npm run android:open -w @logbook/web
+```
+
+Then use **Run** or **Build → Build APK(s)**. From the command line, with `JAVA_HOME` pointing at Android Studio's `jbr` folder:
+
+```bash
+npm run android:apk -w @logbook/web
+```
+
+The debug APK is written to `apps/web/android/app/build/outputs/apk/debug/app-debug.apk`. The first build downloads Gradle and the Android build tools, about 500 MB.
 
 ### Optional: local sync server
 
@@ -103,6 +128,6 @@ The output in `apps/web/dist` is static files. See [docs/04-deployment.md](docs/
 
 ## Status
 
-The MVP (milestones M1–M4) is complete. Next is **V1**: supervisor accounts with a verification queue, KMPDC-layout print pages, assessment forms, case reports, treatment plans with next-visit briefs, and push reminders. See [docs/01-architecture.md § Roadmap](docs/01-architecture.md#roadmap).
+The MVP (M1–M4) is complete, with phone-first storage, the Android app shell, and supervisor sign-off on the phone (the first V1 item). Still to come in V1: KMPDC-layout print pages, assessment forms, case reports, treatment plans with next-visit briefs, and server-side supervisor accounts. See [docs/01-architecture.md § Roadmap](docs/01-architecture.md#roadmap).
 
 Counting rules R1–R10 are **defaults** until a training centre confirms them (KMPDC does not define them), and the app labels them that way. Procedure counts show recorded exposure; the app does not certify competence.

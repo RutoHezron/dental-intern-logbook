@@ -7,7 +7,10 @@ Open the app and choose one of:
 - **Open the demo** to explore a fictional 12-month internship (Dr Alex Mwangi). Nothing you do there affects your own logbook. To leave it, go to **Settings → Start my own logbook**.
 - **Set up my internship**: enter your name, training centre, start date and rotation order. You can change dates, extensions and supervisors later under **Rotations**.
 
-On a phone, use your browser's **Add to Home screen** to install the app. It then opens like an app and works without signal.
+**Your logbook is stored on your phone.** On first launch the app sets up its storage on the phone, and the welcome screen confirms it. No account or signal is needed.
+
+- **Android app:** your data stays in the app's own storage. A backup copy is saved automatically every day to `Documents/DentalLogbook` (the last 7 days are kept). It survives even if the app is uninstalled.
+- **Browser:** use **Add to Home screen** so the browser keeps your data permanently. Then save a backup to your phone's files or cloud drive weekly (**Settings → Phone storage → Save backup to phone**); the app reminds you.
 
 ## Logging a patient (about 30 seconds)
 
@@ -48,6 +51,16 @@ Optional details live under *Diagnosis, investigations, referral and notes*. OMF
 - **Logbook → By code**: progress for every KMPDC code — verified out of the minimum, plus entries awaiting verification (hatched), the highest verified level, and status (met, on track, at risk, behind, not met).
 - Code chips: **solid** = verified, **dashed** = awaiting verification, **red outline** = returned by your supervisor (fix and save to resubmit).
 - Verified entries cannot be edited or deleted. This protects your evidence.
+
+## Getting entries signed
+
+1. Open **Supervisor sign-off** (from Logbook, More, or the reminder on Today).
+2. Tap **Hand the phone to Dr …** and give your supervisor the phone.
+3. Your supervisor reviews each entry. Any notes beside an entry are prompts. For each one they choose **Verify**, **Different level** (the level they observed) or **Return** (with what to fix). **Verify all remaining as claimed** speeds this up.
+4. They tap **Sign** and enter their own PIN. The first time, they choose it.
+5. They hand the phone back. Verified entries are now locked. Returned entries show a red outline; fix the visit and save it to send it back.
+
+The supervisor's PIN is stored only as a protected code on your phone. Never ask for it or record it.
 
 ## Diary
 

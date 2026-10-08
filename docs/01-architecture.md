@@ -100,6 +100,21 @@ Weeks and months count from the internship start ("Week 7", "Month 3"); calendar
 
 **Insights** are rule-based, and each carries its evidence (the numbers it rests on) and a basis label (*recorded data* or *interpretation*). The wording speaks of recorded exposure, never competence, and never suggests a treatment for a patient. The level-gap insight looks at the **most recent** verified entries, because early-rotation entries are naturally below the expected level.
 
+## Phone-first storage
+
+The phone is the system of record for the intern; the server is optional.
+
+| Concern | Design |
+|---|---|
+| First launch | `initDeviceStorage()` opens the IndexedDB database, records the setup date and calls `navigator.storage.persist()`. In the native app, storage is app-private and never evicted. Onboarding confirms "Storage is ready on this phone". |
+| Native shell | Capacitor 8 (`apps/web/android`) wraps the same build. The service worker registers only on the web. |
+| Backups | Native: automatic daily JSON backup to `Documents/DentalLogbook`, only when data changed, last 7 kept, falling back to app storage, restorable from Settings. Web: share sheet or download, with a 7-day reminder. Demo data is never backed up. |
+| Privacy | Android system cloud backup and device transfer are disabled, so data leaves the phone only through the intern's own backups or sync. |
+
+## Supervisor sign-off on the phone
+
+`verificationQueue()` and `reviewChecks()` (core) feed the review screen. `signOff()` (repository) checks the supervisor's PIN (PBKDF2 hash in `supervisor.pinHash`, device-only and stripped from the wire format), then creates one hash-chained verification per decision with method `pin` and updates entry status, all in a single transaction. Verifications push after entries. On the server (migration 0400), a trigger sets entry status from each verification, device-set statuses are ignored, and edits to verified entries are refused.
+
 ## Offline and sync
 
 | Concern | Design |

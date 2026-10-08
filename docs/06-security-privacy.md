@@ -32,6 +32,8 @@ How this is enforced:
 | URLs | Opaque UUIDs only; patient numbers never appear in URLs | |
 | Logging | No clinical content in logs; sync payloads must not be logged (see deployment) | |
 | Export and deletion | Full JSON backup; CSV exports (formula-injection safe); "Delete all data on this device" | Server-side account deletion with export (V1) |
+| Phone storage | Data in app-private storage (native) or persistent browser storage. Android cloud backup and device-to-device transfer are **disabled** (`allowBackup=false`, data-extraction rules), so records never leave the phone without the intern choosing to. Intern-controlled backups go to `Documents/DentalLogbook`. | Optional passphrase-encrypted backups (V2) |
+| Supervisor sign-off on the phone | Supervisor PIN stored only as a salted PBKDF2-SHA-256 hash (210k iterations) on the device, never synced; guessable PINs refused; each decision is an append-only, hash-chained verification; the server accepts PIN sign-offs only for the intern's own entries. **Limitation:** a PIN on the intern's own phone is weaker than a supervisor's own account, so this mirrors the paper book's trust model. | Supervisor accounts with passkeys and the chairside QR flow |
 | Device loss | No identifiers stored; sign out from Settings | Remote session revocation and auto-lock (V2) |
 
 ## Clinical-safety and integrity rules
