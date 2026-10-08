@@ -21,6 +21,7 @@ import type {
  */
 
 export type SyncTable =
+  | 'facilities'
   | 'internships'
   | 'rotations'
   | 'patients'

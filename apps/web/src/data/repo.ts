@@ -145,6 +145,7 @@ export async function setupInternship(input: SetupInput): Promise<string> {
     await setMeta(META.activeInternship, internshipId);
     await setMeta(META.rules, DEFAULT_COUNTING_RULES);
     await setMeta(META.demo, null);
+    await enqueue('facilities', facility.id);
     await enqueue('internships', internshipId);
     for (const r of rotations) await enqueue('rotations', r.id);
     for (const s of supervisors) await enqueue('supervisors', s.id);
@@ -436,6 +437,7 @@ export async function saveInternship(i: Internship): Promise<void> {
 
 export async function saveFacility(f: Facility): Promise<void> {
   await db.facilities.put(f);
+  await enqueue('facilities', f.id);
 }
 
 export async function savePreferences(p: Preferences): Promise<void> {

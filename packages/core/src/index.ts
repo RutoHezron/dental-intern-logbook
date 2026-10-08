@@ -20,6 +20,8 @@ export * from './analytics/portfolio';
 
 export * from './export/csv';
 
+export * from './sync/wire';
+
 export * from './util/dates';
 export * from './util/fdi';
 export * from './util/ids';

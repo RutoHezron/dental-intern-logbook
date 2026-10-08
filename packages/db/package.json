@@ -1,0 +1,20 @@
+{
+  "name": "@logbook/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Database migration tests: runs supabase/migrations in PGlite (real Postgres in WebAssembly) with a Supabase auth shim.",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
+    "@types/node": "^24.19.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@logbook/core": "^0.1.0"
+  }
+}

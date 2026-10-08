@@ -3,7 +3,9 @@ import {
   BookOpen,
   CalendarRange,
   CircleAlert,
+  CloudCheck,
   CloudOff,
+  CloudUpload,
   FileBarChart2,
   GraduationCap,
   HardDrive,
@@ -11,10 +13,12 @@ import {
   Menu,
   NotebookPen,
   Plus,
+  RefreshCw,
   Settings,
   Trophy,
 } from 'lucide-react';
-import { NavLink, Outlet, useLocation } from 'react-router';
+import { Link, NavLink, Outlet, useLocation } from 'react-router';
+import { useSync } from '../sync/SyncProvider';
 import { Suspense, useEffect } from 'react';
 import { ROTATION_SHORT } from '../lib/format';
 import { useInternship } from '../state/AppData';
@@ -34,30 +38,39 @@ const SECONDARY = [
   { to: '/settings', label: 'Settings', Icon: Settings },
 ];
 
-/** Where unsynced changes stand. Before an account is connected, records live on this device only. */
+const SYNC_LOOK = {
+  local: { Icon: HardDrive, color: 'var(--ink-3)', text: 'Saved on this device' },
+  signed_out: { Icon: HardDrive, color: 'var(--ink-3)', text: 'Saved on this device · not signed in' },
+  offline: { Icon: CloudOff, color: 'var(--warning-ink)', text: 'Offline · saved on device' },
+  syncing: { Icon: RefreshCw, color: 'var(--ink-2)', text: 'Syncing…' },
+  synced: { Icon: CloudCheck, color: 'var(--good-ink)', text: 'Synced' },
+  pending: { Icon: CloudUpload, color: 'var(--warning-ink)', text: 'Pending sync' },
+  error: { Icon: CircleAlert, color: 'var(--critical-ink)', text: 'Sync error' },
+} as const;
+
+/** 🟢 synced · 🟡 pending · 🔴 error — always with an icon and words, never colour alone. */
 export function SyncStatus({ compact = false }: { compact?: boolean }) {
-  const { state, online } = useInternship();
-  const pending = state.outboxPending;
-  const errors = state.outboxErrors;
-  let Icon = HardDrive;
-  let color = 'var(--ink-3)';
-  let text = 'Saved on this device';
-  let detail = pending ? `${pending} change${pending === 1 ? '' : 's'} will sync once an account is connected.` : 'Everything is saved on this device.';
-  if (errors) {
-    Icon = CircleAlert;
-    color = 'var(--critical-ink)';
-    text = `${errors} sync error${errors === 1 ? '' : 's'}`;
-    detail = 'Some changes could not be sent. They are still saved on this device.';
-  } else if (!online) {
-    Icon = CloudOff;
-    color = 'var(--warning-ink)';
-    text = 'Offline · saved on device';
-  }
+  const sync = useSync();
+  const look = SYNC_LOOK[sync.state];
+  const Icon = look.Icon;
+  const detail =
+    sync.state === 'local' || sync.state === 'signed_out'
+      ? sync.pending
+        ? `${sync.pending} change${sync.pending === 1 ? '' : 's'} will sync once you sign in.`
+        : 'Everything is saved on this device.'
+      : sync.state === 'error'
+        ? `${sync.lastError ?? `${sync.errors} change(s) were not accepted.`} Your records are still saved on this device.`
+        : sync.state === 'pending' || sync.state === 'offline'
+          ? `${sync.pending} change${sync.pending === 1 ? '' : 's'} waiting to sync.`
+          : sync.lastSyncAt
+            ? `Last synced ${new Date(sync.lastSyncAt).toLocaleString()}.`
+            : '';
+  const label = sync.state === 'pending' ? `${look.text} (${sync.pending})` : look.text;
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color }} title={detail} aria-label={`${text}. ${detail}`}>
-      <Icon size={14} aria-hidden="true" />
-      {!compact && <span>{text}</span>}
-    </span>
+    <Link to="/settings#sync" className="inline-flex items-center gap-1.5 text-xs font-medium" style={{ color: look.color }} title={detail} aria-label={`${label}. ${detail}`}>
+      <Icon size={14} aria-hidden="true" className={sync.state === 'syncing' ? 'animate-spin' : undefined} />
+      {!compact && <span>{label}</span>}
+    </Link>
   );
 }
 

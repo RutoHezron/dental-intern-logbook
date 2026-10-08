@@ -6,6 +6,7 @@ import { PageHeader, Section, Segmented, ToneNote, useToast } from '../component
 import type { Preferences } from '../data/db';
 import { clearAll, exportBackup, importBackup, loadDemo, RepoError, saveFacility, saveInternship, savePreferences, saveRules } from '../data/repo';
 import { downloadText } from '../lib/format';
+import { AccountSync } from './AccountSync';
 import { useInternship } from '../state/AppData';
 
 export function SettingsPage() {
@@ -30,6 +31,10 @@ export function SettingsPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <PageHeader title="Settings" />
+
+      <div id="sync">
+        <AccountSync />
+      </div>
 
       <Section title="Profile">
         <form

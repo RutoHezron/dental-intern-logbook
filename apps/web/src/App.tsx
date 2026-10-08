@@ -6,6 +6,7 @@ import { QuickEntryPage } from './pages/QuickEntry';
 import { TodayPage } from './pages/Today';
 import { AppDataProvider, useAppData } from './state/AppData';
 import { ThemeSync } from './state/theme';
+import { SyncProvider } from './sync/SyncProvider';
 
 // Today and Quick Entry load with the app shell; everything else loads on first visit.
 const named = <K extends string>(load: () => Promise<Record<K, ComponentType<object>>>, key: K) =>
@@ -70,11 +71,13 @@ export function App() {
   return (
     <AppDataProvider>
       <ThemeSync />
+      <SyncProvider>
       <ToastProvider>
         <Suspense fallback={<div className="p-8 text-ink-2">Loading…</div>}>
           <RouterProvider router={router} />
         </Suspense>
       </ToastProvider>
+      </SyncProvider>
     </AppDataProvider>
   );
 }
