@@ -1,0 +1,22 @@
+import { generateDemoDataset } from '../src/synthetic';
+import { indexDataset, requirementProgress, summarizeProgress, computeStats, generateInsights, progressTimeline, buildPortfolio, checkVerificationChain } from '../src';
+
+const t0 = Date.now();
+const ds = generateDemoDataset();
+const t1 = Date.now();
+const ix = indexDataset(ds);
+console.log('generated in', t1 - t0, 'ms');
+console.log({ encounters: ds.encounters.length, activities: ds.activities.length, entries: ds.entries.length, verifications: ds.verifications.length, patients: ds.patients.length, reflections: ds.reflections.length });
+console.log(ds.rotations.map(r => `${r.rotation} ${r.startsOn}..${r.endsOn}`).join('\n'));
+const asOf = '2026-10-08';
+const prog = requirementProgress(ix, asOf);
+for (const p of prog) console.log(p.requirement.code.padEnd(14), String(p.logged).padStart(4), String(p.verified).padStart(4), '/', String(p.requirement.minCount).padEnd(4), 'atL', String(p.atExpectedLevel).padStart(3), p.status, p.forecast ?? '');
+console.log(summarizeProgress(prog));
+const s = computeStats(ix, ds.internship.periodFrom, asOf);
+console.log({ proc: s.procedures, patients: s.patientsSeen, emerg: s.emergencies, refs: s.referrals, xray: s.radiographs, theatre: s.theatre, outreach: s.outreach, academic: s.academic });
+for (const i of generateInsights(ix, { asOf })) console.log(`[${i.question}/${i.tone}/${i.basis}] ${i.text}`);
+for (const step of progressTimeline(ix, asOf)) console.log(step.period.label, step.stats.procedures.total, step.cumulativeProcedures, Math.round(step.performedShare*100)+'%', step.headline, step.levelUps.length);
+const t2 = Date.now(); const pf = buildPortfolio(ix, asOf); console.log('portfolio ms', Date.now()-t2);
+for (const d of pf.draftReflection) console.log('-', d.text);
+const chain = checkVerificationChain(ds.verifications, new Map(ds.entries.map(e => [e.id, e])));
+console.log('chain problems', chain.length);
