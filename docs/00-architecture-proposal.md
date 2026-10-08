@@ -1,7 +1,7 @@
 # Architecture & Implementation Proposal
 
 **Project:** Digital Dental Internship Logbook, Clinical Diary & Progressive Reporting Platform
-**Date:** 8 October 2026 · **Status:** Proposal, awaiting go-ahead before scaffolding
+**Date:** 8 October 2026 · **Status:** Approved and implemented as the MVP (M1–M4). See [01-architecture.md](01-architecture.md) for the system as built.
 **Inputs:** your build brief; *Digital Dental Logbook Blueprint v1.1*; `logbook_reference_schema_1.sql`; *KMPDC National Guidelines and Logbook for Dental Interns, 3rd ed. (Oct 2024)*, 122 pp.
 
 ---
