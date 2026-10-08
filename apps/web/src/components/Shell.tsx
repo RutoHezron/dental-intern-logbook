@@ -14,6 +14,7 @@ import {
   NotebookPen,
   PenLine,
   Plus,
+  Printer,
   RefreshCw,
   Settings,
   Trophy,
@@ -34,6 +35,7 @@ const PRIMARY = [
 
 const SECONDARY = [
   { to: '/sign-off', label: 'Supervisor sign-off', Icon: PenLine },
+  { to: '/print', label: 'Print logbook', Icon: Printer },
   { to: '/competencies', label: 'Competencies', Icon: GraduationCap },
   { to: '/portfolio', label: 'Portfolio', Icon: Trophy },
   { to: '/rotations', label: 'Rotations', Icon: CalendarRange },

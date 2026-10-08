@@ -20,6 +20,7 @@ export * from './analytics/reports';
 export * from './analytics/portfolio';
 
 export * from './export/csv';
+export * from './print/logbook-pages';
 
 export * from './sync/wire';
 

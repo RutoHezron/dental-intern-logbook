@@ -24,6 +24,7 @@ const PortfolioPage = named(() => import('./pages/Portfolio'), 'PortfolioPage');
 const RotationsPage = named(() => import('./pages/Rotations'), 'RotationsPage');
 const SettingsPage = named(() => import('./pages/Settings'), 'SettingsPage');
 const MorePage = named(() => import('./pages/More'), 'MorePage');
+const PrintLogbookPage = named(() => import('./pages/PrintLogbook'), 'PrintLogbookPage');
 const SignOffPage = named(() => import('./pages/SignOff'), 'SignOffPage');
 const OnboardingPage = named(() => import('./pages/Onboarding'), 'OnboardingPage');
 
@@ -61,6 +62,7 @@ const routes: RouteObject[] = [
           { path: 'settings', element: <SettingsPage /> },
           { path: 'more', element: <MorePage /> },
           { path: 'sign-off', element: <SignOffPage /> },
+          { path: 'print', element: <PrintLogbookPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },

@@ -11,7 +11,7 @@ import {
   type EntryStatus,
   type LogbookEntry,
 } from '@logbook/core';
-import { Download, PenLine, Search } from 'lucide-react';
+import { Download, PenLine, Printer, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { LevelLadder, PageHeader, ProgressBar, RotationDot, Segmented, StatusBadge } from '../components/ui';
@@ -125,6 +125,9 @@ export function LogbookPage() {
           <>
             <Link to="/sign-off" className="btn btn-primary">
               <PenLine size={16} aria-hidden="true" /> Supervisor sign-off
+            </Link>
+            <Link to={`/print${rotation ? `?rotation=${ds.rotations.find((r) => r.rotation === rotation)?.id ?? ''}` : ''}`} className="btn btn-secondary">
+              <Printer size={16} aria-hidden="true" /> Print KMPDC pages
             </Link>
             <button type="button" className="btn btn-secondary" onClick={() => downloadText(`logbook-entries${rotation ? '-' + rotation : ''}.csv`, logbookCsv(ix, exportRange))}>
               <Download size={16} aria-hidden="true" /> Logbook CSV
