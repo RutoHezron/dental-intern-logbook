@@ -167,7 +167,7 @@ describe('activity → code mapping', () => {
 
   it('maps community items, case steps and weekly reports only during COMM', () => {
     expect(run(act('community_activity', { communityItem: 3 }), 'COMM').entries[0]!.requirementCode).toBe('COMM A03');
-    expect(run(act('community_case_step', { caseType: 'hiv', caseSlot: 1, followUpStep: 'genogram' }), 'COMM').entries[0]!.requirementCode).toBe('COMM C-hiv');
+    expect(run(act('community_case_step', { caseType: 'hiv', caseSlot: 1, followUpStep: 'genogram' }), 'COMM').entries[0]!.requirementCode).toBe('COMM C-HIV');
     expect(run(act('weekly_report', { weeklyReportNo: 2 }), 'COMM').entries[0]!.requirementCode).toBe('COMM W');
     expect(run(act('community_activity', { communityItem: 3 }), 'OMF').entries).toHaveLength(0);
   });

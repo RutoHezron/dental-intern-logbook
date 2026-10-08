@@ -145,14 +145,14 @@ export const COMMUNITY_ITEMS: string[] = [
 ];
 
 /** 5.7.5 Case follow-up for oral manifestations in systemic illness. Each case has four signed steps. */
-export const COMMUNITY_CASE_TYPES: { id: string; name: string; cases: number }[] = [
-  { id: 'diabetes', name: 'Diabetes', cases: 2 },
-  { id: 'hypertension', name: 'Hypertension', cases: 2 },
-  { id: 'cardiac', name: 'Cardiac disease', cases: 2 },
-  { id: 'special_needs', name: 'Child with special needs', cases: 2 },
-  { id: 'hiv', name: 'HIV', cases: 2 },
-  { id: 'tobacco', name: 'Smoking and tobacco use', cases: 4 },
-  { id: 'oral_cancer', name: 'Oral cancer', cases: 2 },
+export const COMMUNITY_CASE_TYPES: { id: string; abbr: string; name: string; cases: number }[] = [
+  { id: 'diabetes', abbr: 'DM', name: 'Diabetes', cases: 2 },
+  { id: 'hypertension', abbr: 'HTN', name: 'Hypertension', cases: 2 },
+  { id: 'cardiac', abbr: 'CARD', name: 'Cardiac disease', cases: 2 },
+  { id: 'special_needs', abbr: 'SN', name: 'Child with special needs', cases: 2 },
+  { id: 'hiv', abbr: 'HIV', name: 'HIV', cases: 2 },
+  { id: 'tobacco', abbr: 'TOB', name: 'Smoking and tobacco use', cases: 4 },
+  { id: 'oral_cancer', abbr: 'OC', name: 'Oral cancer', cases: 2 },
 ];
 
 export const FOLLOW_UP_STEPS = [
@@ -163,7 +163,8 @@ export const FOLLOW_UP_STEPS = [
 ] as const;
 
 export const communityItemCode = (item: number) => `COMM A${String(item).padStart(2, '0')}`;
-export const communityCaseCode = (caseType: string) => `COMM C-${caseType}`;
+export const communityCaseCode = (caseType: string) =>
+  `COMM C-${COMMUNITY_CASE_TYPES.find((c) => c.id === caseType)?.abbr ?? caseType.toUpperCase()}`;
 export const COMMUNITY_WEEKLY_REPORT_CODE = 'COMM W';
 
 const COMM: Requirement[] = [

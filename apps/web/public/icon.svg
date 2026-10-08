@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#1b2530"/>
+  <!-- Five-step level ladder: the app's mark -->
+  <g fill="#e46a8f">
+    <rect x="10" y="40" width="7" height="12" rx="2"/>
+    <rect x="19.5" y="34" width="7" height="18" rx="2"/>
+    <rect x="29" y="27" width="7" height="25" rx="2"/>
+    <rect x="38.5" y="20" width="7" height="32" rx="2"/>
+    <rect x="48" y="12" width="7" height="40" rx="2"/>
+  </g>
+</svg>

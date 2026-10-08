@@ -655,12 +655,17 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
     if (age < 2 || !entry.supervisorId) continue; // too recent: still pending
     const r = rng();
     // Older entries are almost all signed; recent weeks have a realistic backlog.
-    if (r < (age > 30 ? 0.025 : 0.08)) continue; // pending
+    if (r < (age > 21 ? 0 : 0.12)) continue; // pending
     const delay = weighted([[0, 50], [1, 30], [2, 12], [4, 6], [9, 2]]);
     const signDate = addDays(entry.performedOn, Math.min(delay, age));
     const signedAt = stamp(signDate, int(15, 19), int(0, 59));
     if (r < (age > 30 ? 0.045 : 0.1)) {
       decisions.push({ entry, signedAt, decision: 'returned', comment: pick(RETURN), verifierId: entry.supervisorId });
+      // Older returns were corrected and resubmitted, then verified; recent ones are still open.
+      const fixedOn = addDays(signDate, int(2, 6));
+      if (daysBetween(fixedOn, asOf) > 3) {
+        decisions.push({ entry, signedAt: stamp(fixedOn, int(15, 19), int(0, 59)), decision: 'verified', levelObserved: entry.levelClaimed, verifierId: entry.supervisorId });
+      }
       continue;
     }
     const adjust = entry.levelClaimed > 1 && chance(0.11);
