@@ -1,5 +1,10 @@
 import {
   buildRotationCalendar,
+  checkPin,
+  createVerification,
+  hashPin,
+  statusAfter,
+  type Level,
   DEFAULT_COUNTING_RULES,
   deriveActivity,
   deriveEncounter,
@@ -428,6 +433,74 @@ export async function saveSupervisor(s: Supervisor): Promise<void> {
   if (!s.name.trim()) throw new RepoError('Enter the supervisor\'s name.');
   await db.supervisors.put({ ...s, name: s.name.trim() });
   await enqueue('supervisors', s.id);
+}
+
+// ---------------------------------------------------------------------------
+// Supervisor sign-off on the intern's phone
+// ---------------------------------------------------------------------------
+
+export async function setSupervisorPin(supervisorId: string, pin: string): Promise<void> {
+  const s = await db.supervisors.get(supervisorId);
+  if (!s) throw new RepoError('Supervisor not found.');
+  if (s.pinHash) throw new RepoError('This supervisor already has a PIN.');
+  const hashed = await hashPin(pin);
+  await db.supervisors.put({ ...s, ...hashed, pinSetAt: nowISO() });
+}
+
+export interface SignOffDecision {
+  entryId: string;
+  decision: 'verified' | 'returned';
+  levelObserved?: Level;
+  comment?: string;
+}
+
+/**
+ * Apply a supervisor's decisions after checking their PIN. Each decision
+ * becomes an append-only verification, hash-chained to the previous one, and
+ * sets the entry's status. Only entries awaiting verification and submitted
+ * to this supervisor can be signed.
+ */
+export async function signOff(supervisorId: string, pin: string, decisions: SignOffDecision[]): Promise<{ verified: number; returned: number }> {
+  const supervisor = await db.supervisors.get(supervisorId);
+  if (!supervisor) throw new RepoError('Supervisor not found.');
+  if (!(await checkPin(pin, supervisor))) throw new RepoError('That PIN is not correct.');
+  if (!decisions.length) throw new RepoError('No decisions to sign.');
+  let verified = 0;
+  let returned = 0;
+  await db.transaction('rw', [db.entries, db.verifications, db.outbox], async () => {
+    const all = await db.verifications.toArray();
+    let prevHash = all.sort((a, b) => a.signedAt.localeCompare(b.signedAt) || a.id.localeCompare(b.id)).at(-1)?.hash ?? null;
+    let t = Date.now();
+    for (const d of decisions) {
+      const entry = await db.entries.get(d.entryId);
+      if (!entry || entry.status !== 'submitted') throw new RepoError('An entry was changed while you were reviewing. Start the sign-off again.');
+      if ((entry.supervisorId ?? null) !== supervisorId) throw new RepoError('An entry is assigned to a different supervisor.');
+      if (d.decision === 'returned' && !d.comment?.trim()) throw new RepoError('Say what needs fixing for each returned entry.');
+      // Strictly increasing timestamps keep the chain order unambiguous.
+      const signedAt = new Date(t++).toISOString();
+      const v = createVerification(
+        entry,
+        {
+          verifierId: supervisorId,
+          decision: d.decision,
+          levelObserved: d.decision === 'verified' ? d.levelObserved ?? entry.levelClaimed : undefined,
+          comment: d.comment?.trim() || undefined,
+          method: 'pin',
+        },
+        prevHash,
+        signedAt,
+        newId(),
+      );
+      prevHash = v.hash;
+      await db.verifications.put(v);
+      await db.entries.put({ ...entry, status: statusAfter(v), updatedAt: signedAt });
+      await enqueue('entries', entry.id);
+      await enqueue('verifications', v.id);
+      if (d.decision === 'verified') verified++;
+      else returned++;
+    }
+  });
+  return { verified, returned };
 }
 
 export async function saveInternship(i: Internship): Promise<void> {

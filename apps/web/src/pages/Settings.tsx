@@ -1,19 +1,19 @@
 import { PROCEDURE_TYPES, RULE_DESCRIPTIONS, todayISO, type CountingRules } from '@logbook/core';
-import { Download, ShieldCheck, Upload } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { Download, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { PageHeader, Section, Segmented, ToneNote, useToast } from '../components/ui';
 import type { Preferences } from '../data/db';
-import { clearAll, exportBackup, importBackup, loadDemo, RepoError, saveFacility, saveInternship, savePreferences, saveRules } from '../data/repo';
+import { clearAll, exportBackup, loadDemo, saveFacility, saveInternship, savePreferences, saveRules } from '../data/repo';
 import { downloadText } from '../lib/format';
 import { AccountSync } from './AccountSync';
+import { PhoneStorage } from './PhoneStorage';
 import { useInternship } from '../state/AppData';
 
 export function SettingsPage() {
   const { ds, state } = useInternship();
   const toast = useToast();
   const navigate = useNavigate();
-  const fileRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState({
     internName: ds.internship.internName,
     email: ds.internship.email ?? '',
@@ -148,43 +148,22 @@ export function SettingsPage() {
         </details>
       </Section>
 
+      <div id="storage">
+        <PhoneStorage />
+      </div>
+
       <Section title="Your data">
         <div className="mb-4 flex items-start gap-3 text-sm text-ink-2">
           <ShieldCheck size={18} className="mt-0.5 shrink-0 text-ink" aria-hidden="true" />
-          <p>
-            Everything is stored on this device. No patient names, phone numbers or ID numbers are collected. Export a backup regularly; when account sync arrives, your
-            records will also be kept on the server.
-          </p>
+          <p>No patient names, phone numbers or ID numbers are collected — only hospital numbers, as in the paper logbook.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={async () => downloadText(`logbook-backup-${todayISO()}.json`, await exportBackup(), 'application/json')}
-          >
-            <Download size={16} aria-hidden="true" /> Export full backup
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={() => fileRef.current?.click()}>
-            <Upload size={16} aria-hidden="true" /> Restore from backup
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-              if (!window.confirm('Restoring replaces everything on this device with the backup. Continue?')) return;
-              try {
-                await importBackup(await file.text());
-                toast('Backup restored');
-              } catch (err) {
-                toast(err instanceof RepoError ? err.message : 'Could not restore this file', 'critical');
-              }
-            }}
-          />
-        </div>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          onClick={async () => downloadText(`logbook-backup-${todayISO()}.json`, await exportBackup(), 'application/json')}
+        >
+          <Download size={16} aria-hidden="true" /> Download everything as a file
+        </button>
         <div className="mt-6 space-y-3 border-t border-line pt-4">
           {state.demo ? (
             <ToneNote tone="neutral">You are using the fictional demo internship. Start your own logbook to remove the demo data from this device.</ToneNote>

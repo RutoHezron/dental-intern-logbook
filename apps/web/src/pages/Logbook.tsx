@@ -11,7 +11,7 @@ import {
   type EntryStatus,
   type LogbookEntry,
 } from '@logbook/core';
-import { Download, Search } from 'lucide-react';
+import { Download, PenLine, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { LevelLadder, PageHeader, ProgressBar, RotationDot, Segmented, StatusBadge } from '../components/ui';
@@ -123,6 +123,9 @@ export function LogbookPage() {
         title="Logbook"
         actions={
           <>
+            <Link to="/sign-off" className="btn btn-primary">
+              <PenLine size={16} aria-hidden="true" /> Supervisor sign-off
+            </Link>
             <button type="button" className="btn btn-secondary" onClick={() => downloadText(`logbook-entries${rotation ? '-' + rotation : ''}.csv`, logbookCsv(ix, exportRange))}>
               <Download size={16} aria-hidden="true" /> Logbook CSV
             </button>

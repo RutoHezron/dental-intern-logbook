@@ -4,7 +4,7 @@ import type { Encounter, PullResult, PushChange, PushResult } from '@logbook/cor
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { actAs, asAdmin, createDb, createUser, rpc } from '../../../../packages/db/test/harness';
 import { db, getMeta, META } from '../data/db';
-import { clearAll, loadState, newId, saveEncounter, setupInternship } from '../data/repo';
+import { clearAll, loadState, newId, saveEncounter, setSupervisorPin, setupInternship, signOff } from '../data/repo';
 import { syncOnce, type SyncTransport } from './engine';
 
 /**
@@ -113,20 +113,30 @@ describe('sync engine ↔ Postgres', () => {
     expect(after.patients[0]).toMatchObject({ ref: 'OP-25-55555', birthYear: 1985, sex: 'M' });
   });
 
-  it('keeps a rejected change on the device, marked with the server\'s reason', async () => {
+  it('syncs a supervisor sign-off made on the phone, and refuses later edits to verified entries', async () => {
     await createInternshipWithVisit();
-    await syncOnce(transport);
-    // Tamper on the device: claim an entry is verified.
-    const entry = (await db.entries.toArray())[0]!;
-    await db.entries.put({ ...entry, status: 'verified' });
-    await db.outbox.add({ table: 'entries', recordId: entry.id, op: 'upsert', createdAt: new Date().toISOString(), attempts: 0, status: 'pending' });
+    const supervisorId = (await db.supervisors.toArray())[0]!.id;
+    await setSupervisorPin(supervisorId, '4071');
+    const [first, second] = await db.entries.toArray();
+    await signOff(supervisorId, '4071', [
+      { entryId: first!.id, decision: 'verified', levelObserved: 3 },
+      { entryId: second!.id, decision: 'returned', comment: 'Confirm the tooth' },
+    ]);
     const res = await syncOnce(transport);
-    expect(res.rejected).toHaveLength(1);
-    expect(res.rejected[0]!.reason).toMatch(/supervisor verification/);
-    const item = (await db.outbox.toArray())[0]!;
-    expect(item).toMatchObject({ status: 'error', attempts: 1 });
+    expect(res.rejected).toEqual([]);
     await asAdmin(pg);
-    expect((await pg.query<{ status: string }>('select status from public.logbook_entry where id = $1', [entry.id])).rows[0]!.status).toBe('submitted');
+    const rows = await pg.query<{ id: string; status: string }>('select id, status from public.logbook_entry');
+    expect(Object.fromEntries(rows.rows.map((r) => [r.id, r.status]))).toEqual({ [first!.id]: 'verified', [second!.id]: 'returned' });
+    expect((await pg.query('select * from public.verification')).rows).toHaveLength(2);
+
+    // Tamper on the device: change the level of the verified entry.
+    const verified = (await db.entries.get(first!.id))!;
+    await db.entries.put({ ...verified, levelClaimed: 5 });
+    await db.outbox.add({ table: 'entries', recordId: verified.id, op: 'upsert', createdAt: new Date().toISOString(), attempts: 0, status: 'pending' });
+    const again = await syncOnce(transport);
+    expect(again.rejected).toHaveLength(1);
+    expect(again.rejected[0]!.reason).toMatch(/cannot be changed/);
+    expect((await db.outbox.toArray())[0]).toMatchObject({ status: 'error', attempts: 1 });
   });
 
   it('does not overwrite a local edit that has not been pushed yet', async () => {

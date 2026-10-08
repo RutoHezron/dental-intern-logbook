@@ -6,6 +6,7 @@ import { QuickEntryPage } from './pages/QuickEntry';
 import { TodayPage } from './pages/Today';
 import { AppDataProvider, useAppData } from './state/AppData';
 import { ThemeSync } from './state/theme';
+import { StorageProvider } from './storage/StorageProvider';
 import { SyncProvider } from './sync/SyncProvider';
 
 // Today and Quick Entry load with the app shell; everything else loads on first visit.
@@ -23,6 +24,7 @@ const PortfolioPage = named(() => import('./pages/Portfolio'), 'PortfolioPage');
 const RotationsPage = named(() => import('./pages/Rotations'), 'RotationsPage');
 const SettingsPage = named(() => import('./pages/Settings'), 'SettingsPage');
 const MorePage = named(() => import('./pages/More'), 'MorePage');
+const SignOffPage = named(() => import('./pages/SignOff'), 'SignOffPage');
 const OnboardingPage = named(() => import('./pages/Onboarding'), 'OnboardingPage');
 
 /** Screens inside the shell need an internship; first run goes to onboarding. */
@@ -58,6 +60,7 @@ const routes: RouteObject[] = [
           { path: 'rotations', element: <RotationsPage /> },
           { path: 'settings', element: <SettingsPage /> },
           { path: 'more', element: <MorePage /> },
+          { path: 'sign-off', element: <SignOffPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],
       },
@@ -72,11 +75,13 @@ export function App() {
     <AppDataProvider>
       <ThemeSync />
       <SyncProvider>
+      <StorageProvider>
       <ToastProvider>
         <Suspense fallback={<div className="p-8 text-ink-2">Loading…</div>}>
           <RouterProvider router={router} />
         </Suspense>
       </ToastProvider>
+      </StorageProvider>
       </SyncProvider>
     </AppDataProvider>
   );

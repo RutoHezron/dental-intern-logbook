@@ -208,7 +208,7 @@ describe('sync push and pull', () => {
   it('refuses tables a device must not write', async () => {
     await actAs(db, ALICE);
     const res = await rpc<PushResult>(db, 'sync_push', [
-      JSON.stringify([{ table: 'verification', op: 'upsert', record: { id: uuidv7() } }, { table: 'audit_log', op: 'upsert', record: { id: 1 } }]),
+      JSON.stringify([{ table: 'audit_log', op: 'upsert', record: { id: uuidv7() } }, { table: 'profile', op: 'upsert', record: { id: ALICE } }]),
     ]);
     expect(res.accepted).toHaveLength(0);
     expect(res.rejected.map((r) => r.reason)).toEqual([expect.stringMatching(/cannot be written/), expect.stringMatching(/cannot be written/)]);
@@ -265,12 +265,14 @@ describe('logbook evidence integrity', () => {
     return { d, entry };
   }
 
-  it('a device cannot mark its own entry verified', async () => {
+  it('a device cannot mark its own entry verified: the status it sends is ignored', async () => {
     const d = deviceData();
     await actAs(db, ALICE);
     const forged = d.entries.map((e) => ({ table: 'logbook_entry', op: 'upsert' as const, record: toWire({ ...e, status: 'verified' }) }));
     const res = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([...changesFor(d).filter((c) => c.table !== 'logbook_entry'), ...forged])]);
-    expect(res.rejected.map((r) => r.reason)).toEqual([expect.stringMatching(/supervisor verification/), expect.stringMatching(/supervisor verification/)]);
+    expect(res.rejected).toEqual([]);
+    const statuses = await db.query<{ status: string }>('select status from public.logbook_entry');
+    expect(statuses.rows.map((r) => r.status)).toEqual(['submitted', 'submitted']);
   });
 
   it('a verified entry cannot be edited, but the rest of the batch still applies', async () => {
@@ -314,5 +316,77 @@ describe('logbook evidence integrity', () => {
     const cols = await db.query<{ column_name: string }>(`select column_name from information_schema.columns where table_schema = 'public' and table_name = 'audit_log'`);
     expect(cols.rows.map((c: { column_name: string }) => c.column_name).sort()).toEqual(['action', 'actor_id', 'at', 'id', 'row_id', 'table_name']);
     await expect(db.query(`update public.audit_log set action = 'x'`)).rejects.toThrow();
+  });
+});
+
+describe("supervisor sign-off on the intern's phone", () => {
+  const signOff = (entryId: string, decision: 'verified' | 'returned', method = 'pin', extra: Record<string, unknown> = {}) => ({
+    table: 'verification',
+    op: 'upsert' as const,
+    record: {
+      id: uuidv7(),
+      entry_id: entryId,
+      verifier_id: uuidv7(),
+      decision,
+      level_observed: decision === 'verified' ? 4 : null,
+      comment: decision === 'returned' ? 'Please confirm the tooth number' : null,
+      method,
+      signed_at: '2025-11-03T16:00:00.000Z',
+      prev_hash: null,
+      hash: 'b'.repeat(64),
+      ...extra,
+    },
+  });
+
+  it('a PIN sign-off pushed from the phone verifies the entry', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    const entry = d.entries[1]!;
+    // The phone pushes the entry (already marked verified locally) followed by the verification.
+    const res = await rpc<PushResult>(db, 'sync_push', [
+      JSON.stringify([...changesFor(d).filter((c) => c.record.id !== entry.id), { table: 'logbook_entry', op: 'upsert', record: toWire({ ...entry, status: 'verified' }) }, signOff(entry.id, 'verified')]),
+    ]);
+    expect(res.rejected).toEqual([]);
+    const pull = await rpc<PullResult>(db, 'sync_pull', [0]);
+    const pulled = pull.changes.logbook_entry!.map((r: Record<string, unknown>) => fromWire<LogbookEntry>(r));
+    expect(pulled.find((e) => e.id === entry.id)!.status).toBe('verified');
+    expect(pull.changes.verification).toHaveLength(1);
+  });
+
+  it('a returned entry can be corrected and resubmitted from the phone', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    const entry = d.entries[1]!;
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), signOff(entry.id, 'returned')])]);
+    const status = async () => (await db.query<{ status: string }>('select status from public.logbook_entry where id = $1', [entry.id])).rows[0]!.status;
+    expect(await status()).toBe('returned');
+    await rpc(db, 'sync_push', [JSON.stringify([{ table: 'logbook_entry', op: 'upsert', record: toWire({ ...entry, site: '46', status: 'submitted' }) }])]);
+    expect(await status()).toBe('submitted');
+  });
+
+  it('re-sending the same verification is harmless', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    const v = signOff(d.entries[0]!.id, 'verified');
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), v])]);
+    const again = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([v])]);
+    expect(again.rejected).toEqual([]);
+    expect((await db.query('select * from public.verification')).rows).toHaveLength(1);
+  });
+
+  it("only PIN sign-offs, only for the intern's own entries, and never deletions", async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify(changesFor(d))]);
+    const passkey = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([signOff(d.entries[0]!.id, 'verified', 'passkey')])]);
+    expect(passkey.rejected[0]!.reason).toMatch(/row-level security/);
+    await actAs(db, BOB);
+    const other = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([signOff(d.entries[0]!.id, 'verified')])]);
+    expect(other.rejected).toHaveLength(1);
+    await actAs(db, ALICE);
+    const v = signOff(d.entries[0]!.id, 'verified');
+    await rpc(db, 'sync_push', [JSON.stringify([v])]);
+    const del = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([{ ...v, op: 'delete' }])]);
+    expect(del.rejected[0]!.reason).toMatch(/cannot be deleted/);
   });
 });

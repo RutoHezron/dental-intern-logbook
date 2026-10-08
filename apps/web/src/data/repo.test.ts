@@ -1,4 +1,4 @@
-import { createVerification, type Encounter, type Level } from '@logbook/core';
+import { checkVerificationChain, createVerification, type Encounter, type Level } from '@logbook/core';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { db } from './db';
 import {
@@ -12,7 +12,9 @@ import {
   saveActivity,
   saveEncounter,
   saveRotations,
+  setSupervisorPin,
   setupInternship,
+  signOff,
 } from './repo';
 
 async function setup() {
@@ -146,5 +148,41 @@ describe('repository', () => {
     expect(await db.encounters.count()).toBe(1);
     expect(await db.entries.count()).toBe(3);
     await expect(importBackup('{"format":"other"}')).rejects.toThrow(/not a logbook backup/);
+  });
+
+  it('lets the supervisor sign on the phone with their PIN, chaining every decision', async () => {
+    const { id } = await setup();
+    const supervisorId = (await db.supervisors.toArray())[0]!.id;
+    await saveEncounter(visit(id, { supervisorId }), { ref: 'OP-25-1' });
+    const [a, b, c] = await db.entries.toArray();
+    await expect(signOff(supervisorId, '4071', [{ entryId: a!.id, decision: 'verified' }])).rejects.toThrow(/not correct/);
+    await setSupervisorPin(supervisorId, '4071');
+    expect(JSON.stringify(await db.supervisors.get(supervisorId))).not.toContain('"4071"');
+    await expect(setSupervisorPin(supervisorId, '5555')).rejects.toThrow(/already has a PIN/);
+    await expect(signOff(supervisorId, '4071', [{ entryId: a!.id, decision: 'returned' }])).rejects.toThrow(/what needs fixing/);
+
+    const res = await signOff(supervisorId, '4071', [
+      { entryId: a!.id, decision: 'verified' },
+      { entryId: b!.id, decision: 'verified', levelObserved: 3 },
+      { entryId: c!.id, decision: 'returned', comment: 'Check the tooth number' },
+    ]);
+    expect(res).toEqual({ verified: 2, returned: 1 });
+    const entries = new Map((await db.entries.toArray()).map((e) => [e.id, e]));
+    expect([entries.get(a!.id)!.status, entries.get(b!.id)!.status, entries.get(c!.id)!.status]).toEqual(['verified', 'verified', 'returned']);
+    const vs = await db.verifications.toArray();
+    expect(vs.every((v) => v.method === 'pin' && v.verifierId === supervisorId)).toBe(true);
+    expect(checkVerificationChain(vs, entries)).toEqual([]);
+    // Signing again is refused: those entries are no longer awaiting verification.
+    await expect(signOff(supervisorId, '4071', [{ entryId: a!.id, decision: 'verified' }])).rejects.toThrow(/changed while you were reviewing/);
+    expect((await db.outbox.toArray()).filter((o) => o.table === 'verifications')).toHaveLength(3);
+  });
+
+  it('refuses to sign entries submitted to a different supervisor', async () => {
+    const { id } = await setup();
+    const supervisorId = (await db.supervisors.toArray())[0]!.id;
+    await saveEncounter(visit(id, { supervisorId: null }), { ref: 'OP-25-1' });
+    await setSupervisorPin(supervisorId, '4071');
+    const entry = (await db.entries.toArray())[0]!;
+    await expect(signOff(supervisorId, '4071', [{ entryId: entry.id, decision: 'verified' }])).rejects.toThrow(/different supervisor/);
   });
 });

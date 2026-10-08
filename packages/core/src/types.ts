@@ -189,6 +189,10 @@ export interface Supervisor {
   /** Rotation / department the supervisor is attached to. */
   rotation?: RotationCode;
   kmpdcRegNo?: string;
+  /** On-phone sign-off PIN (salted PBKDF2 hash). Device-only; never synced. */
+  pinSalt?: string;
+  pinHash?: string;
+  pinSetAt?: ISODateTime;
 }
 
 export interface Internship {

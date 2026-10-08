@@ -10,6 +10,8 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'prompt',
+      // Registered from main.tsx, and only in the browser: the native app serves its files from the app package.
+      injectRegister: false,
       includeAssets: ['icon.svg'],
       manifest: {
         name: 'Dental Intern Logbook',

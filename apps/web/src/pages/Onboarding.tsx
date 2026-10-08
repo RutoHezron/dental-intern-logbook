@@ -1,11 +1,13 @@
 import { addDays, displayDate, KMPDC_DENTAL_3, startOfIsoWeek, todayISO, weekday, type RotationCode } from '@logbook/core';
-import { ArrowDown, ArrowUp, ShieldCheck } from 'lucide-react';
+import { ArrowDown, ArrowUp, CheckCircle2, ShieldCheck, Smartphone } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router';
 import { LevelLadder, ToneNote } from '../components/ui';
 import { loadDemo, RepoError, setupInternship } from '../data/repo';
 import { ROTATION_VAR } from '../lib/format';
 import { useAppData } from '../state/AppData';
+import { isNative } from '../storage/device';
+import { useDeviceStorage } from '../storage/StorageProvider';
 
 const DEMO_END = '2026-10-11';
 
@@ -82,6 +84,8 @@ export function OnboardingPage() {
               </li>
             ))}
           </ol>
+
+          <StorageReady />
 
           <div className="mt-8 flex items-start gap-3 rounded-[14px] border border-line bg-surface p-4 text-sm text-ink-2">
             <ShieldCheck size={20} className="mt-0.5 shrink-0 text-ink" aria-hidden="true" />
@@ -165,6 +169,29 @@ export function OnboardingPage() {
             </button>
           </form>
         </section>
+      </div>
+    </div>
+  );
+}
+
+/** First-run confirmation that the logbook's storage is set up on this phone. */
+function StorageReady() {
+  const { status } = useDeviceStorage();
+  const device = isNative ? 'phone' : 'device';
+  return (
+    <div className="mt-8 flex items-start gap-3 rounded-[14px] border border-line bg-surface p-4 text-sm" role="status" aria-live="polite">
+      {status ? (
+        <CheckCircle2 size={20} className="mt-0.5 shrink-0 text-good-ink" aria-hidden="true" />
+      ) : (
+        <Smartphone size={20} className="mt-0.5 shrink-0 text-ink-3" aria-hidden="true" />
+      )}
+      <div>
+        <p className="font-medium">{status ? `Storage is ready on this ${device}` : `Setting up storage on this ${device}…`}</p>
+        <p className="mt-0.5 text-ink-2">
+          Your logbook is saved {isNative ? 'in the app’s own storage on this phone' : 'on this device'} and works without signal or an account.
+          {status?.persistent === true && ` It is kept permanently — the ${isNative ? 'phone' : 'browser'} will not clear it to free space.`}
+          {status?.persistent === false && ' Add the app to your Home screen so the browser keeps it permanently.'}
+        </p>
       </div>
     </div>
   );

@@ -23,7 +23,12 @@ export interface Reminder {
   action?: string;
 }
 
-export function computeReminders(ix: DatasetIndex, today: ISODate, now: Date = new Date()): Reminder[] {
+export function computeReminders(
+  ix: DatasetIndex,
+  today: ISODate,
+  now: Date = new Date(),
+  backup: { lastAt: string | null; automatic: boolean; demo: boolean } = { lastAt: null, automatic: false, demo: false },
+): Reminder[] {
   const out: Reminder[] = [];
   const { internship, rotations } = ix.ds;
   if (today < internship.periodFrom) {
@@ -31,6 +36,20 @@ export function computeReminders(ix: DatasetIndex, today: ISODate, now: Date = n
     return out;
   }
   const inInternship = today <= internship.periodTo;
+
+  // Browser storage can be cleared; the native app backs up by itself.
+  if (!backup.automatic && !backup.demo && ix.entries.length > 0) {
+    const days = backup.lastAt ? Math.floor((now.getTime() - Date.parse(backup.lastAt)) / 86_400_000) : null;
+    if (days === null || days >= 7) {
+      out.push({
+        id: 'backup',
+        tone: 'warning',
+        text: days === null ? 'Save a backup of your logbook to your phone.' : `Your last backup was ${days} days ago. Save a fresh copy to your phone.`,
+        to: '/settings#storage',
+        action: 'Back up',
+      });
+    }
+  }
 
   const returned = ix.entries.filter((e) => e.status === 'returned');
   if (returned.length) {
@@ -48,9 +67,18 @@ export function computeReminders(ix: DatasetIndex, today: ISODate, now: Date = n
     out.push({ id: 'end-of-day', tone: 'neutral', text: 'Nothing logged today yet. Add today\'s patients before you forget the details.', to: '/log', action: 'Log now' });
   }
 
-  const stale = ix.entries.filter((e) => e.status === 'submitted' && daysBetween(e.performedOn, today) > 7).length;
+  const waiting = ix.entries.filter((e) => e.status === 'submitted');
+  const stale = waiting.filter((e) => daysBetween(e.performedOn, today) > 7).length;
   if (stale) {
-    out.push({ id: 'stale', tone: 'warning', text: `${stale} entr${stale === 1 ? 'y has' : 'ies have'} waited more than a week for verification. Consider asking your supervisor for a sign-off session.` });
+    out.push({
+      id: 'stale',
+      tone: 'warning',
+      text: `${stale} entr${stale === 1 ? 'y has' : 'ies have'} waited more than a week for verification. Hand your phone to your supervisor to sign them.`,
+      to: '/sign-off',
+      action: 'Sign-off',
+    });
+  } else if (waiting.length >= 5) {
+    out.push({ id: 'waiting', tone: 'neutral', text: `${waiting.length} entries are ready for your supervisor to sign.`, to: '/sign-off', action: 'Sign-off' });
   }
 
   for (const r of rotations) {

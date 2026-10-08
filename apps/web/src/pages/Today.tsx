@@ -17,6 +17,8 @@ import { lazy, Suspense, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { LevelLadder, PageHeader, ProgressBar, RotationDot, Section, StatusBadge, ToneNote } from '../components/ui';
 import { computeReminders } from '../lib/reminders';
+import { isNative } from '../storage/device';
+import { useDeviceStorage } from '../storage/StorageProvider';
 import { plural, ROTATION_VAR, rotationName } from '../lib/format';
 import { analyticsDate, useInternship } from '../state/AppData';
 
@@ -44,6 +46,7 @@ function Stat({ label, value, delta, hint }: { label: string; value: number | st
 
 export function TodayPage() {
   const { ix, ds, today, currentRotation, state } = useInternship();
+  const storage = useDeviceStorage();
   const asOf = analyticsDate(today, ix);
   const [showAllInsights, setShowAllInsights] = useState(false);
 
@@ -61,14 +64,14 @@ export function TodayPage() {
           .sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || a.pct - b.pct)
       : [];
     const insights = generateInsights(ix, { asOf });
-    const reminders = computeReminders(ix, today);
+    const reminders = computeReminders(ix, today, new Date(), { lastAt: storage.backup?.lastAt ?? null, automatic: isNative && (storage.backup?.enabled ?? true), demo: Boolean(state.demo) });
     const rotationsDone = ds.rotations.filter((r) => rotationEnd(r) < asOf).length;
     const todays = [
       ...ix.encounters.filter((e) => e.date === today).map((e) => ({ kind: 'visit' as const, id: e.id, time: e.time ?? '', e })),
       ...ix.activities.filter((a) => a.date === today).map((a) => ({ kind: 'activity' as const, id: a.id, time: '', a })),
     ];
     return { total, thisWeek, week, summary, rotationCodes, insights, reminders, rotationsDone, todays };
-  }, [ix, ds, asOf, today, currentRotation]);
+  }, [ix, ds, asOf, today, currentRotation, storage.backup, state.demo]);
 
   const patients = new Map(ds.patients.map((p) => [p.id, p]));
   const firstName = ds.internship.internName.replace(/^Dr\.?\s+/i, '').split(' ')[0];

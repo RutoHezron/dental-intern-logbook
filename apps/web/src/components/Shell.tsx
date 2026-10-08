@@ -12,6 +12,7 @@ import {
   Home,
   Menu,
   NotebookPen,
+  PenLine,
   Plus,
   RefreshCw,
   Settings,
@@ -32,6 +33,7 @@ const PRIMARY = [
 ];
 
 const SECONDARY = [
+  { to: '/sign-off', label: 'Supervisor sign-off', Icon: PenLine },
   { to: '/competencies', label: 'Competencies', Icon: GraduationCap },
   { to: '/portfolio', label: 'Portfolio', Icon: Trophy },
   { to: '/rotations', label: 'Rotations', Icon: CalendarRange },

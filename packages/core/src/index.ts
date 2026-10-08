@@ -8,6 +8,7 @@ export * from './rules/rotations';
 export * from './rules/derive';
 export * from './rules/verification';
 export * from './rules/validation';
+export * from './rules/review-checks';
 
 export * from './analytics/dataset-index';
 export * from './analytics/periods';
@@ -26,3 +27,4 @@ export * from './util/dates';
 export * from './util/fdi';
 export * from './util/ids';
 export * from './util/hash';
+export * from './util/pin';

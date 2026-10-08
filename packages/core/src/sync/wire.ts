@@ -50,12 +50,17 @@ export const PUSH_ORDER: ClientTable[] = [
   'entries',
   'reflections',
   'snapshots',
+  // After entries: a verification signed on the phone references its entry.
+  'verifications',
 ];
 
-/** Tables the device may write. Verifications are created by supervisors on the server. */
+/** Tables the device may write. Verifications from the phone are accepted only for PIN sign-off (see migration 0400). */
 export const CLIENT_WRITABLE = new Set<ClientTable>(PUSH_ORDER);
 
 const SERVER_ONLY = new Set(['owner_id', 'server_seq', 'server_received_at']);
+
+/** Device-only secrets that must never leave the phone. */
+const DEVICE_ONLY = new Set(['pinSalt', 'pinHash', 'pinSetAt']);
 
 /** Keys whose null value is meaningful on the device (kept as null rather than dropped). */
 const NULLABLE = new Set(['rotationId', 'patientId', 'supervisorId', 'deletedAt', 'prevHash']);
@@ -82,7 +87,9 @@ function convertKeys(value: unknown, fn: (k: string) => string, dropNulls: boole
 
 /** Device record → server row (snake_case, nested arrays kept for the push function). */
 export function toWire(record: object): Record<string, unknown> {
-  return convertKeys(record, toSnake, false) as Record<string, unknown>;
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(record)) if (!DEVICE_ONLY.has(k)) clean[k] = v;
+  return convertKeys(clean, toSnake, false) as Record<string, unknown>;
 }
 
 /** Server row → device record (camelCase, server-only columns removed, empty optionals dropped). */
