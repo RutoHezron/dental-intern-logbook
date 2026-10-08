@@ -2,6 +2,7 @@ export * from './types';
 
 export * from './catalogue/kmpdc-dental-3rd-2024';
 export * from './catalogue/procedures';
+export * from './catalogue/kmpdc-forms';
 
 export * from './rules/counting';
 export * from './rules/rotations';
@@ -9,6 +10,7 @@ export * from './rules/derive';
 export * from './rules/verification';
 export * from './rules/validation';
 export * from './rules/review-checks';
+export * from './rules/assessments';
 
 export * from './analytics/dataset-index';
 export * from './analytics/periods';

@@ -3,6 +3,7 @@ import {
   BookOpen,
   CalendarRange,
   CircleAlert,
+  ClipboardList,
   CloudCheck,
   CloudOff,
   CloudUpload,
@@ -36,6 +37,7 @@ const PRIMARY = [
 const SECONDARY = [
   { to: '/sign-off', label: 'Supervisor sign-off', Icon: PenLine },
   { to: '/print', label: 'Print logbook', Icon: Printer },
+  { to: '/forms', label: 'Assessment forms', Icon: ClipboardList },
   { to: '/competencies', label: 'Competencies', Icon: GraduationCap },
   { to: '/portfolio', label: 'Portfolio', Icon: Trophy },
   { to: '/rotations', label: 'Rotations', Icon: CalendarRange },

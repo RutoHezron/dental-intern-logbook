@@ -6,6 +6,7 @@ import { buildRotationCalendar, rotationEnd, rotationForDate, rotationProgress }
 import { createVerification, statusAfter } from '../rules/verification';
 import type {
   Activity,
+  Assessment,
   Dataset,
   Encounter,
   EncounterProcedure,
@@ -26,6 +27,9 @@ import type {
 import { addDays, daysBetween, eachDay, isWeekend, parseDate, weekday } from '../util/dates';
 import { seededRandom, uuidv7 } from '../util/ids';
 import { REFLECTION_TEMPLATES, MILESTONES } from './reflections';
+import { criteriaFor, FORMS_VERSION } from '../catalogue/kmpdc-forms';
+import { indexDataset } from '../analytics/dataset-index';
+import { assessmentSchedule, progressSnapshot, progressSummaryText } from '../rules/assessments';
 
 /**
  * Synthetic internship for demonstration and testing: "Dr Alex Mwangi".
@@ -722,7 +726,7 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
   }
   reflections.sort((a, b) => a.date.localeCompare(b.date));
 
-  return {
+  const dataset: Dataset = {
     requirementSet: set,
     rules,
     internship,
@@ -735,6 +739,76 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
     verifications,
     reflections,
   };
+  dataset.assessments = demoAssessments(dataset, asOf, { pick, int, idOn, stamp });
+  return dataset;
+}
+
+/** Completed KMPDC forms for past meetings (fictional remarks), so the forms screen shows a realistic history. */
+function demoAssessments(
+  ds: Dataset,
+  asOf: ISODate,
+  h: { pick: <T>(a: readonly T[]) => T; int: (a: number, b: number) => number; idOn: (d: ISODate) => string; stamp: (d: ISODate, hh: number, mm: number) => string },
+): Assessment[] {
+  const ix = indexDataset(ds);
+  const out: Assessment[] = [];
+  const INTERN = {
+    a1: ['Instruments adequate; occasional shortage of local anaesthetic cartridges.', 'Equipment generally available; one dental chair under repair for two weeks.'],
+    a2: ['Supervisor available daily; consultants hold teaching sessions twice a week.', 'Good availability for consultation, especially during clinics.'],
+    a3: ['Busy outpatient clinics; working hours 8am–5pm plus on-call duties.', 'Heavy but manageable workload.'],
+    a4: ['Limited exposure to some procedures because of low case numbers.', 'Long queues in the clinic reduce time for complex cases.'],
+    a5: ['Request allocation to theatre lists and booking of specific cases.', 'Schedule protected time for complex procedures.'],
+  };
+  const SUP = {
+    b1: ['Punctual, diligent and keen to learn; good rapport with patients.', 'Performing well; improving confidence in procedures.'],
+    b3: ['Needs more exposure to surgical cases.', 'Documentation of case notes can improve.'],
+    b4: ['Allocate to additional theatre sessions.', 'Review case notes weekly with the supervisor.'],
+  };
+  const COORD = {
+    c1: ['Satisfactory progress.', 'Good progress so far.'],
+    c2: ['Case mix limits some codes.', 'None significant.'],
+    c3: ['Supervisor to prioritise outstanding procedures.', 'Continue as planned.'],
+  };
+  for (const r of ds.rotations) {
+    for (const f of assessmentSchedule(r)) {
+      if (f.due > asOf) continue;
+      const base: Assessment = {
+        id: h.idOn(f.due),
+        internshipId: ds.internship.id,
+        rotationId: r.id,
+        kind: f.kind,
+        sequence: f.sequence,
+        formVersion: FORMS_VERSION,
+        responses: {},
+        grades: {},
+        gradeRemarks: {},
+        createdAt: h.stamp(f.due, 14, 0),
+        updatedAt: h.stamp(f.due, 15, 0),
+        deletedAt: null,
+      };
+      if (f.kind === 'monthly') {
+        base.heldOn = f.due;
+        base.heldAt = '14:00';
+        for (const [k, v] of Object.entries({ ...INTERN, ...SUP, ...COORD })) base.responses[k] = h.pick(v);
+        base.responses.b2 = progressSummaryText(ix, r, f.due);
+      } else if (f.kind === 'mid_rotation') {
+        base.responses = {
+          m1: 'Settling well into the rotation; keen to increase hands-on procedures.',
+          m2: progressSummaryText(ix, r, f.due),
+          m3: 'Progress satisfactory; continue with the agreed plan.',
+        };
+      } else if (f.kind === 'end_of_rotation') {
+        for (const c of criteriaFor(r.rotation).flatMap((g) => g.criteria)) base.grades[c.id] = h.int(0, 3) === 0 ? 2 : 3;
+        base.overallGrade = 3;
+        base.recommendation = 'Has met the expectations of the rotation. Recommended to proceed.';
+      } else {
+        base.responses = { o1: 'Satisfactory performance throughout the rotation.', o2: 'Rotation requirements reviewed; satisfactory.' };
+        base.outcome = 'completed';
+      }
+      if (f.kind !== 'overall_rotation') base.progressSnapshot = progressSnapshot(ix, r, f.due);
+      out.push(base);
+    }
+  }
+  return out;
 }
 
 export const DEMO_FACILITY = { id: 'facility-demo-ecrh', name: 'Example County Referral Hospital', county: 'Example County', facilityType: 'County referral hospital (fictional)' };

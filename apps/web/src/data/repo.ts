@@ -1,6 +1,8 @@
 import {
   buildRotationCalendar,
   checkPin,
+  validateAssessment,
+  type Assessment,
   createVerification,
   hashPin,
   statusAfter,
@@ -175,6 +177,7 @@ export async function loadDemo(asOf: string): Promise<void> {
     await db.entries.bulkPut(ds.entries);
     await db.verifications.bulkPut(ds.verifications);
     await db.reflections.bulkPut(ds.reflections);
+    if (ds.assessments) await db.assessments.bulkPut(ds.assessments);
     await setMeta(META.activeInternship, ds.internship.id);
     await setMeta(META.rules, ds.rules);
     await setMeta(META.demo, { asOf });
@@ -503,6 +506,20 @@ export async function signOff(supervisorId: string, pin: string, decisions: Sign
   return { verified, returned };
 }
 
+// ---------------------------------------------------------------------------
+// Assessment forms
+// ---------------------------------------------------------------------------
+
+export async function saveAssessment(a: Assessment, rotationCode: string): Promise<void> {
+  const issues = validateAssessment(a, rotationCode);
+  const error = issues.find((i) => i.level === 'error');
+  if (error) throw new RepoError(error.message);
+  const now = nowISO();
+  const prev = await db.assessments.get(a.id);
+  await db.assessments.put({ ...a, createdAt: prev?.createdAt ?? now, updatedAt: now, deletedAt: null });
+  await enqueue('assessments', a.id);
+}
+
 export async function saveInternship(i: Internship): Promise<void> {
   await db.internships.put(i);
   await enqueue('internships', i.id);
@@ -530,7 +547,7 @@ export async function saveSnapshot(s: ReportSnapshot): Promise<void> {
 // Backup (full personal export, brief §19)
 // ---------------------------------------------------------------------------
 
-const BACKUP_TABLES = ['meta', 'facilities', 'internships', 'rotations', 'patients', 'supervisors', 'encounters', 'activities', 'entries', 'verifications', 'reflections', 'snapshots'] as const;
+const BACKUP_TABLES = ['meta', 'facilities', 'internships', 'rotations', 'patients', 'supervisors', 'encounters', 'activities', 'entries', 'verifications', 'reflections', 'snapshots', 'assessments'] as const;
 
 export async function exportBackup(): Promise<string> {
   const out: Record<string, unknown> = { format: 'dental-intern-logbook-backup', version: 1, exportedAt: nowISO() };

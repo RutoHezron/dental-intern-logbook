@@ -18,7 +18,8 @@ export type ClientTable =
   | 'entries'
   | 'verifications'
   | 'reflections'
-  | 'snapshots';
+  | 'snapshots'
+  | 'assessments';
 
 export const SERVER_TABLE: Record<ClientTable, string> = {
   facilities: 'facility',
@@ -32,6 +33,7 @@ export const SERVER_TABLE: Record<ClientTable, string> = {
   verifications: 'verification',
   reflections: 'reflection',
   snapshots: 'report_snapshot',
+  assessments: 'assessment',
 };
 
 export const CLIENT_TABLE: Record<string, ClientTable> = Object.fromEntries(
@@ -50,6 +52,7 @@ export const PUSH_ORDER: ClientTable[] = [
   'entries',
   'reflections',
   'snapshots',
+  'assessments',
   // After entries: a verification signed on the phone references its entry.
   'verifications',
 ];
@@ -66,7 +69,7 @@ const DEVICE_ONLY = new Set(['pinSalt', 'pinHash', 'pinSetAt']);
 const NULLABLE = new Set(['rotationId', 'patientId', 'supervisorId', 'deletedAt', 'prevHash']);
 
 /** Opaque payload fields stored as-is (no key conversion inside). */
-const OPAQUE = new Set(['payload']);
+const OPAQUE = new Set(['payload', 'responses', 'grades', 'gradeRemarks', 'grade_remarks', 'progressSnapshot', 'progress_snapshot']);
 
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 const toCamel = (k: string) => k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());

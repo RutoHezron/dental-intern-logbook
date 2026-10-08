@@ -100,7 +100,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await asAdmin(db);
   await db.exec(`
-    truncate public.verification, public.logbook_entry, public.reflection, public.report_snapshot,
+    truncate public.assessment, public.verification, public.logbook_entry, public.reflection, public.report_snapshot,
              public.activity, public.encounter_procedure, public.finding, public.investigation,
              public.encounter, public.patient, public.rotation, public.supervisor, public.internship,
              public.facility cascade;
@@ -388,5 +388,57 @@ describe("supervisor sign-off on the intern's phone", () => {
     await rpc(db, 'sync_push', [JSON.stringify([v])]);
     const del = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([{ ...v, op: 'delete' }])]);
     expect(del.rejected[0]!.reason).toMatch(/cannot be deleted/);
+  });
+});
+
+describe('assessment forms', () => {
+  const form = (d: ReturnType<typeof deviceData>, over: Record<string, unknown> = {}) => ({
+    table: 'assessment',
+    op: 'upsert' as const,
+    record: {
+      id: uuidv7(),
+      internship_id: d.internship.id,
+      rotation_id: d.rotations[0]!.id,
+      kind: 'end_of_rotation',
+      sequence: 1,
+      form_version: 'kmpdc-dental-3rd-2024',
+      responses: {},
+      grades: { k1: 3, s4: 1 },
+      grade_remarks: { s4: 'Needs more supervised cases' },
+      overall_grade: 2,
+      recommendation: 'Satisfactory',
+      progress_snapshot: { asOf: '2025-12-28', codes: [{ code: 'OMF 2', verified: 20, min: 20, status: 'met' }] },
+      ...over,
+    },
+  });
+
+  it('round-trips a form with its grades and evidence', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    const res = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([...changesFor(d), form(d)])]);
+    expect(res.rejected).toEqual([]);
+    const pull = await rpc<PullResult>(db, 'sync_pull', [0]);
+    const row = pull.changes.assessment![0]!;
+    expect(row.grades).toEqual({ k1: 3, s4: 1 });
+    expect(row.grade_remarks).toEqual({ s4: 'Needs more supervised cases' });
+    expect((row.progress_snapshot as { codes: unknown[] }).codes).toHaveLength(1);
+  });
+
+  it('keeps one live form per rotation, kind and month, and checks the extension period', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), form(d)])]);
+    const dup = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([form(d)])]);
+    expect(dup.rejected[0]!.reason).toMatch(/duplicate key/);
+    const extend = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([form(d, { kind: 'overall_rotation', outcome: 'extend', grades: {}, grade_remarks: {} })])]);
+    expect(extend.rejected[0]!.reason).toMatch(/check constraint/);
+  });
+
+  it('keeps forms private to the intern', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), form(d)])]);
+    await actAs(db, BOB);
+    expect((await db.query('select * from public.assessment')).rows).toHaveLength(0);
   });
 });

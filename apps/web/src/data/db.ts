@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type {
   Activity,
+  Assessment,
   CountingRules,
   Encounter,
   Facility,
@@ -31,7 +32,8 @@ export type SyncTable =
   | 'entries'
   | 'verifications'
   | 'reflections'
-  | 'snapshots';
+  | 'snapshots'
+  | 'assessments';
 
 export interface OutboxItem {
   seq?: number;
@@ -70,6 +72,7 @@ export class LogbookDB extends Dexie {
   verifications!: Table<Verification, string>;
   reflections!: Table<Reflection, string>;
   snapshots!: Table<ReportSnapshot, string>;
+  assessments!: Table<Assessment, string>;
   outbox!: Table<OutboxItem, number>;
 
   constructor(name = 'dental-intern-logbook') {
@@ -89,6 +92,8 @@ export class LogbookDB extends Dexie {
       snapshots: 'id, kind, from',
       outbox: '++seq, table, recordId, status',
     });
+    // v2: KMPDC assessment and evaluation forms.
+    this.version(2).stores({ assessments: 'id, rotationId, kind' });
   }
 }
 

@@ -377,6 +377,40 @@ export interface Reflection {
   deletedAt?: ISODateTime | null;
 }
 
+// ---------------------------------------------------------------------------
+// Assessment and evaluation forms (KMPDC 5.x.6, 5.x.7)
+// ---------------------------------------------------------------------------
+
+export type Grade = 0 | 1 | 2 | 3;
+
+export interface Assessment {
+  id: ID;
+  internshipId: ID;
+  rotationId: ID;
+  kind: 'monthly' | 'mid_rotation' | 'end_of_rotation' | 'overall_rotation';
+  /** Month one / two for monthly assessments. */
+  sequence: number;
+  formVersion: string;
+  /** Meeting date and time (monthly assessments record both). */
+  heldOn?: ISODate;
+  heldAt?: string;
+  /** Free-text answers keyed by form item id (a1…c3, m1…m3, o1, o2). */
+  responses: Record<string, string>;
+  /** End-of-rotation grades 0–3 keyed by criterion id, with remarks. */
+  grades: Record<string, Grade>;
+  gradeRemarks: Record<string, string>;
+  overallGrade?: Grade;
+  recommendation?: string;
+  /** Overall assessment: Medical Superintendent's selection. */
+  outcome?: 'completed' | 'extend' | 'irredeemable';
+  extendBy?: string;
+  /** Logbook counts at the time of the meeting, attached as evidence. */
+  progressSnapshot?: { asOf: ISODate; codes: { code: string; verified: number; min: number; status: string }[] };
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+  deletedAt?: ISODateTime | null;
+}
+
 /** Everything the analytics layer needs, in one bundle. */
 export interface Dataset {
   requirementSet: RequirementSet;
@@ -390,4 +424,6 @@ export interface Dataset {
   entries: LogbookEntry[];
   verifications: Verification[];
   reflections: Reflection[];
+  /** Assessment forms (optional: analytics do not need them). */
+  assessments?: Assessment[];
 }

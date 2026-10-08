@@ -62,6 +62,20 @@ Optional details live under *Diagnosis, investigations, referral and notes*. OMF
 
 The supervisor's PIN is stored only as a protected code on your phone. Never ask for it or record it.
 
+## Printing your logbook pages
+
+**Print logbook** (from the Logbook or More menu) produces the KMPDC case and procedure log for a rotation in the book's layout. It is filled from your verified entries and ready for your supervisor's signature and stamp. Each row shows a short digital reference that links it to the signed record in the app. Entries beyond the book's rows go on continuation sheets. You can include entries still awaiting verification if your supervisor prefers to sign the paper directly.
+
+## Assessment forms
+
+**Assessment forms** lists each rotation's monthly, mid-rotation, end-of-rotation and overall forms, with due dates and status. Open a form at the meeting:
+
+- Your name and the rotation dates are already filled in.
+- The supervisor's *progress in achieving logbook targets* can be drafted from your logbook with **Fill from logbook**, then edited.
+- In the end-of-rotation evaluation, a grade of 0 or 1 cannot be saved without reasons, as the logbook requires.
+- A snapshot of your logbook counts is attached as evidence.
+- Use **Print view → Print** for signatures, names, registration numbers and stamps.
+
 ## Diary
 
 Write a few lines after a memorable case, using the prompts: what was interesting, what you learned, what challenged you, what you would do differently, what to revise, and what you need more exposure to. Tag entries ⭐ important, 📚 learning, ⚠️ challenging, 🧠 revision or 🏆 milestone. Diary entries feed your reports and portfolio, and stay private unless you tick *Share with my supervisor*.
