@@ -100,7 +100,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await asAdmin(db);
   await db.exec(`
-    truncate public.assessment, public.verification, public.logbook_entry, public.reflection, public.report_snapshot,
+    truncate public.case_report, public.assessment, public.verification, public.logbook_entry, public.reflection, public.report_snapshot,
              public.activity, public.encounter_procedure, public.finding, public.investigation,
              public.encounter, public.patient, public.rotation, public.supervisor, public.internship,
              public.facility cascade;
@@ -480,5 +480,72 @@ describe('internship-level forms (5.8, 5.9)', () => {
     ]);
     expect(bad.rejected).toHaveLength(2);
     expect(bad.rejected.every((r) => /assessment_rotation_scope/.test(r.reason))).toBe(true);
+  });
+});
+
+describe('case reports', () => {
+  const cr = (d: ReturnType<typeof deviceData>, over: Record<string, unknown> = {}) => ({
+    table: 'case_report',
+    op: 'upsert' as const,
+    record: {
+      id: uuidv7(),
+      internship_id: d.internship.id,
+      rotation_id: d.rotations[0]!.id,
+      date: '2025-11-10',
+      title: 'Pericoronitis managed with surgical extraction',
+      encounter_ids: [d.encounter.id],
+      sections: { dx: 'Pericoronitis 38', mx: 'Surgical extraction', disc: 'Learning points' },
+      status: 'submitted',
+      ...over,
+    },
+  });
+  const signOff = (target: Record<string, unknown>, decision = 'verified') => ({
+    table: 'verification',
+    op: 'upsert' as const,
+    record: { id: uuidv7(), ...target, verifier_id: uuidv7(), decision, comment: decision === 'returned' ? 'Expand the discussion' : null, method: 'pin', signed_at: '2025-11-12T16:00:00.000Z', prev_hash: null, hash: 'c'.repeat(64) },
+  });
+
+  it('a PIN sign-off verifies a case report, after which its content is locked', async () => {
+    const d = deviceData();
+    const report = cr(d);
+    await actAs(db, ALICE);
+    const res = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([...changesFor(d), report, signOff({ case_report_id: report.record.id })])]);
+    expect(res.rejected).toEqual([]);
+    expect((await db.query<{ status: string }>('select status from public.case_report')).rows[0]!.status).toBe('verified');
+    const edit = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([{ ...report, record: { ...report.record, status: 'verified', sections: { dx: 'changed' } } }])]);
+    expect(edit.rejected[0]!.reason).toMatch(/Verified case reports cannot be changed/);
+    const pull = await rpc<PullResult>(db, 'sync_pull', [0]);
+    expect(pull.changes.case_report).toHaveLength(1);
+    expect((pull.changes.case_report![0]!.sections as Record<string, string>).dx).toBe('Pericoronitis 38');
+  });
+
+  it('a device cannot mark its own case report verified', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), cr(d, { status: 'verified' })])]);
+    expect((await db.query<{ status: string }>('select status from public.case_report')).rows[0]!.status).toBe('submitted');
+  });
+
+  it('a verification has exactly one target, owned by the intern', async () => {
+    const d = deviceData();
+    const report = cr(d);
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), report])]);
+    const both = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([signOff({ case_report_id: report.record.id, entry_id: d.entries[0]!.id })])]);
+    expect(both.rejected[0]!.reason).toMatch(/verification_one_target/);
+    await actAs(db, BOB);
+    const other = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([signOff({ case_report_id: report.record.id })])]);
+    expect(other.rejected).toHaveLength(1);
+  });
+
+  it('a returned case report can be revised and resubmitted', async () => {
+    const d = deviceData();
+    const report = cr(d);
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify([...changesFor(d), report, signOff({ case_report_id: report.record.id }, 'returned')])]);
+    const status = async () => (await db.query<{ status: string }>('select status from public.case_report')).rows[0]!.status;
+    expect(await status()).toBe('returned');
+    await rpc(db, 'sync_push', [JSON.stringify([{ ...report, record: { ...report.record, status: 'submitted', sections: { dx: 'x', mx: 'y', disc: 'Expanded' } } }])]);
+    expect(await status()).toBe('submitted');
   });
 });

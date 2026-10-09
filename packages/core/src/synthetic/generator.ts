@@ -3,10 +3,12 @@ import { getProcedureType } from '../catalogue/procedures';
 import { DEFAULT_COUNTING_RULES } from '../rules/counting';
 import { deriveActivity, deriveEncounter, reconcileEntries } from '../rules/derive';
 import { buildRotationCalendar, rotationEnd, rotationForDate, rotationProgress } from '../rules/rotations';
-import { createVerification, statusAfter } from '../rules/verification';
+import { createCaseReportVerification, createVerification, statusAfter } from '../rules/verification';
+import { draftCaseReportFromVisits } from '../rules/case-reports';
 import type {
   Activity,
   Assessment,
+  CaseReport,
   Dataset,
   Encounter,
   EncounterProcedure,
@@ -650,7 +652,7 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
   }
 
   // ---------------------------------------------------------------- supervisor verification
-  type Decision = { entry: LogbookEntry; signedAt: string; decision: 'verified' | 'returned'; levelObserved?: Level; comment?: string; verifierId: ID };
+  type Decision = { entry?: LogbookEntry; report?: CaseReport; signedAt: string; decision: 'verified' | 'returned'; levelObserved?: Level; comment?: string; verifierId: ID };
   const decisions: Decision[] = [];
   const POSITIVE = ['Good technique and patient management.', 'Well done — confident handling.', 'Good case selection and documentation.', 'Sound clinical reasoning.'];
   const RETURN = ['Please confirm the tooth number against the chart.', 'Level seems high for this case — please review.', 'Date does not match the clinic list; please check.'];
@@ -682,21 +684,84 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
       verifierId: entry.supervisorId,
     });
   }
+  // ---------------------------------------------------------------- case reports (5.x.5)
+  const caseReports: CaseReport[] = [];
+  {
+    const partial = indexDataset({ requirementSet: set, rules: DEFAULT_COUNTING_RULES, internship, rotations, patients, supervisors, encounters, activities, entries, verifications: [], reflections: [] });
+    const DISCUSSION: Record<string, string[]> = {
+      OMF: [
+        'Careful pre-operative radiographic assessment changed the surgical approach. Early recognition of risk factors reduces complications; I would plan sectioning earlier in similar cases.',
+        'Prompt drainage and airway assessment were the priorities. The case reinforced escalation criteria for fascial space infections.',
+      ],
+      PAED: [
+        'Behaviour management was as important as the operative procedure. Short, structured appointments and parental involvement improved cooperation.',
+        'Choosing pulp therapy depended on clinical signs and the remaining root length; the case showed the value of a full radiographic assessment.',
+      ],
+      PER: [
+        'Glycaemic control and periodontal health influence each other; coordinating with the physician and reinforcing home care were essential.',
+        'Systematic non-surgical therapy produced measurable improvement at review; patient motivation was the deciding factor.',
+      ],
+      CONS: [
+        'Working-length control and canal curvature were the main technical challenges; pre-curving files and confirmatory radiographs were key.',
+        'Material selection balanced isolation, cavity size and aesthetics; the case illustrated when to choose GIC over composite.',
+      ],
+      COMM: ['Community follow-up revealed social barriers to oral health that a clinic visit alone would miss.'],
+    };
+    for (const r of rotations) {
+      if (r.startsOn > asOf) continue;
+      const finished = rotationEnd(r) < asOf;
+      // Completed rotations: 7-10 reports (some fall short of ten); the current rotation: a few.
+      const wanted = r.rotation === 'COMM' ? (finished ? 6 : 2) : finished ? int(7, 10) : 3;
+      const candidates = encounters.filter(
+        (e) => e.rotationId === r.id && e.visitType === 'new' && e.findings.some((f) => f.isDiagnosis) && e.procedures.length >= 1 && e.patientId,
+      );
+      const chosen = new Set<string>();
+      for (let i = 0; i < wanted * 4 && chosen.size < wanted && candidates.length; i++) chosen.add(pick(candidates).id);
+      for (const encId of chosen) {
+        const enc = encounters.find((e) => e.id === encId)!;
+        const visits = encounters.filter((e) => e.patientId === enc.patientId && e.rotationId === r.id).map((e) => e.id);
+        const draft = draftCaseReportFromVisits(partial, visits);
+        const date = addDays(draft.date, int(2, 9)) > asOf ? asOf : addDays(draft.date, int(2, 9));
+        const report: CaseReport = {
+          id: idOn(date),
+          internshipId,
+          rotationId: r.id,
+          date,
+          title: draft.title || 'Clinical case',
+          patientId: draft.patientId,
+          encounterIds: draft.encounterIds,
+          sections: {
+            ...draft.sections,
+            hx: 'No relevant medical history reported. Regular attender.',
+            disc: pick(DISCUSSION[r.rotation] ?? DISCUSSION.OMF!),
+          },
+          status: 'submitted',
+          supervisorId: enc.supervisorId ?? supsFor(r.rotation)[0]?.id ?? null,
+          createdAt: stamp(date, 20, 0),
+          updatedAt: stamp(date, 20, 0),
+          deletedAt: null,
+        };
+        caseReports.push(report);
+        const age = daysBetween(date, asOf);
+        if (age > 10 && report.supervisorId) {
+          decisions.push({ report, signedAt: stamp(addDays(date, int(1, 6)), int(15, 18), int(0, 59)), decision: 'verified', verifierId: report.supervisorId });
+        }
+      }
+    }
+  }
+
   decisions.sort((a, b) => a.signedAt.localeCompare(b.signedAt));
   const verifications: Verification[] = [];
   let prevHash: string | null = null;
   for (const dcs of decisions) {
-    const v = createVerification(
-      dcs.entry,
-      { verifierId: dcs.verifierId, decision: dcs.decision, levelObserved: dcs.levelObserved, comment: dcs.comment, method: 'demo' },
-      prevHash,
-      dcs.signedAt,
-      idOn(dcs.signedAt.slice(0, 10)),
-    );
+    const input = { verifierId: dcs.verifierId, decision: dcs.decision, levelObserved: dcs.levelObserved, comment: dcs.comment, method: 'demo' as const };
+    const id = idOn(dcs.signedAt.slice(0, 10));
+    const v: Verification = dcs.report ? createCaseReportVerification(dcs.report, input, prevHash, dcs.signedAt, id) : createVerification(dcs.entry!, input, prevHash, dcs.signedAt, id);
     verifications.push(v);
     prevHash = v.hash;
-    dcs.entry.status = statusAfter(v);
-    dcs.entry.updatedAt = dcs.signedAt;
+    const target = dcs.report ?? dcs.entry!;
+    target.status = statusAfter(v);
+    target.updatedAt = dcs.signedAt;
   }
 
   // ---------------------------------------------------------------- reflection diary
@@ -738,6 +803,7 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
     entries,
     verifications,
     reflections,
+    caseReports,
   };
   dataset.assessments = demoAssessments(dataset, asOf, { pick, int, idOn, stamp });
   return dataset;

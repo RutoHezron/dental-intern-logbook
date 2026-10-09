@@ -763,6 +763,10 @@ function VisitForm({ id }: { id?: string }) {
           <Link to={`/diary/new?encounter=${existing.id}`} className="underline underline-offset-2">
             Write a reflection about this case
           </Link>
+          <span aria-hidden="true">·</span>
+          <Link to={`/case-reports/new?encounter=${existing.id}`} className="underline underline-offset-2">
+            Write a case report
+          </Link>
         </p>
       )}
     </form>

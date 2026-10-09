@@ -4,6 +4,9 @@ import {
   isValidPin,
   reviewChecks,
   verificationQueue,
+  caseReportQueue,
+  CASE_REPORT_SECTIONS,
+  type CaseReport,
   type Level,
   type LogbookEntry,
 } from '@logbook/core';
@@ -29,8 +32,9 @@ export function SignOffPage() {
   const pendingBySupervisor = useMemo(() => {
     const m = new Map<string, number>();
     for (const e of verificationQueue(ix)) if (e.supervisorId) m.set(e.supervisorId, (m.get(e.supervisorId) ?? 0) + 1);
+    for (const r of caseReportQueue(ds.caseReports ?? [])) if (r.supervisorId) m.set(r.supervisorId, (m.get(r.supervisorId) ?? 0) + 1);
     return m;
-  }, [ix]);
+  }, [ix, ds.caseReports]);
   const unassigned = verificationQueue(ix, null).length;
 
   if (supervisorId) return <Review supervisorId={supervisorId} onExit={() => setSupervisorId(null)} />;
@@ -90,6 +94,9 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
   const toast = useToast();
   const supervisor = ds.supervisors.find((s) => s.id === supervisorId)!;
   const queue = useMemo(() => verificationQueue(ix, supervisorId), [ix, supervisorId]);
+  const reports = useMemo(() => caseReportQueue(ds.caseReports ?? [], supervisorId), [ds.caseReports, supervisorId]);
+  const reportIds = new Set(reports.map((r) => r.id));
+  const total = queue.length + reports.length;
   const [draft, setDraft] = useState<Draft>({});
   const [step, setStep] = useState<'review' | 'sign' | 'done'>('review');
   const [pin, setPin] = useState('');
@@ -113,7 +120,9 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
 
   const sign = async () => {
     setError(null);
-    const decisions: SignOffDecision[] = Object.entries(draft).map(([entryId, d]) => ({ entryId, decision: d.decision, levelObserved: d.level, comment: d.comment }));
+    const decisions: SignOffDecision[] = Object.entries(draft).map(([id, d]) =>
+      reportIds.has(id) ? { caseReportId: id, decision: d.decision, comment: d.comment } : { entryId: id, decision: d.decision, levelObserved: d.level, comment: d.comment },
+    );
     if (decisions.some((d) => d.decision === 'returned' && !d.comment?.trim())) return setError('Say what needs fixing for each returned entry.');
     setBusy(true);
     try {
@@ -162,7 +171,7 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
         <ArrowLeft size={16} aria-hidden="true" /> Back to intern
       </button>
       <PageHeader eyebrow={`Sign-off for ${ds.internship.internName}`} title={`${supervisor.name}, please review`}>
-        {queue.length} entr{queue.length === 1 ? 'y' : 'ies'} awaiting your verification. Verify, adjust the level you observed, or return with a comment. Checks are prompts, not
+        {queue.length} entr{queue.length === 1 ? 'y' : 'ies'}{reports.length ? ` and ${reports.length} case report${reports.length === 1 ? '' : 's'}` : ''} awaiting your verification. Verify, adjust the level you observed, or return with a comment. Checks are prompts, not
         accusations.
       </PageHeader>
 
@@ -172,7 +181,7 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => setDraft(Object.fromEntries(queue.map((e) => [e.id, draft[e.id] ?? { decision: 'verified' as const }])))}
+              onClick={() => setDraft(Object.fromEntries([...reports, ...queue].map((e) => [e.id, draft[e.id] ?? { decision: 'verified' as const }])))}
             >
               <Check size={16} aria-hidden="true" /> Verify all remaining as claimed
             </button>
@@ -183,6 +192,16 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
             )}
           </div>
           <div className="space-y-5">
+            {reports.length > 0 && (
+              <section>
+                <h2 className="eyebrow mb-2">Case reports</h2>
+                <ul className="space-y-2">
+                  {reports.map((r) => (
+                    <CaseReportReview key={r.id} report={r} value={draft[r.id]} onChange={(v) => set(r.id, v)} />
+                  ))}
+                </ul>
+              </section>
+            )}
             {[...byDate.entries()].map(([date, entries]) => (
               <section key={date}>
                 <h2 className="eyebrow mb-2">{fmtDate(date)}</h2>
@@ -196,7 +215,7 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
           </div>
           <div className="sticky bottom-20 z-10 -mx-4 mt-5 flex items-center gap-3 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur lg:bottom-0 lg:mx-0 lg:rounded-[14px] lg:border">
             <span className="flex-1 text-sm text-ink-2">
-              {decided} of {queue.length} decided
+              {decided} of {total} decided
             </span>
             <button type="button" className="btn btn-primary" disabled={decided === 0} onClick={() => setStep('sign')}>
               <PenLine size={16} aria-hidden="true" /> Sign {decided}
@@ -353,6 +372,46 @@ function EntryReview({
             value={value?.comment ?? ''}
             onChange={(e) => onChange({ decision: 'returned', comment: e.target.value })}
           />
+        </div>
+      )}
+    </li>
+  );
+}
+
+function CaseReportReview({ report, value, onChange }: { report: CaseReport; value: Draft[string] | undefined; onChange: (v: Draft[string] | null) => void }) {
+  const decision = value?.decision;
+  return (
+    <li className="card p-4" style={decision ? { borderColor: decision === 'verified' ? 'var(--good)' : 'var(--critical)' } : undefined}>
+      <div className="font-semibold">{report.title}</div>
+      <div className="text-xs text-ink-3">{fmtDate(report.date)}</div>
+      <details className="mt-2 text-sm">
+        <summary className="cursor-pointer font-medium">Read the report</summary>
+        <div className="mt-2 space-y-2">
+          {CASE_REPORT_SECTIONS.filter((s) => report.sections[s.id]?.trim()).map((s) => (
+            <div key={s.id}>
+              <div className="text-xs font-semibold text-ink-2">{s.label}</div>
+              <p className="whitespace-pre-wrap">{report.sections[s.id]}</p>
+            </div>
+          ))}
+        </div>
+      </details>
+      <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label={`Decision for case report ${report.title}`}>
+        <button type="button" aria-pressed={decision === 'verified'} className="chip !min-h-10" onClick={() => onChange({ decision: 'verified' })}>
+          <Check size={15} aria-hidden="true" /> Verify
+        </button>
+        <button type="button" aria-pressed={decision === 'returned'} className="chip !min-h-10" onClick={() => onChange({ decision: 'returned', comment: value?.comment })}>
+          <CornerUpLeft size={15} aria-hidden="true" /> Return
+        </button>
+        {decision && (
+          <button type="button" className="text-sm text-ink-3 underline underline-offset-2" onClick={() => onChange(null)}>
+            Undo
+          </button>
+        )}
+      </div>
+      {decision === 'returned' && (
+        <div className="mt-3">
+          <label className="label" htmlFor={`cr-${report.id}`}>What needs changing?</label>
+          <input id={`cr-${report.id}`} className="field" value={value?.comment ?? ''} onChange={(e) => onChange({ decision: 'returned', comment: e.target.value })} />
         </div>
       )}
     </li>

@@ -342,7 +342,9 @@ export interface LogbookEntry {
 
 export interface Verification {
   id: ID;
-  entryId: ID;
+  /** Exactly one of entryId / caseReportId is set. */
+  entryId?: ID;
+  caseReportId?: ID;
   verifierId: ID;
   decision: 'verified' | 'returned';
   levelObserved?: Level;
@@ -412,6 +414,29 @@ export interface Assessment {
   deletedAt?: ISODateTime | null;
 }
 
+// ---------------------------------------------------------------------------
+// Case reports (KMPDC 5.x.5 Log of Case Reports)
+// ---------------------------------------------------------------------------
+
+export interface CaseReport {
+  id: ID;
+  internshipId: ID;
+  rotationId: ID | null;
+  date: ISODate;
+  /** The "case description" printed in the logbook row. */
+  title: string;
+  /** Pseudonymous patient and the visits the report is about (optional). */
+  patientId?: ID | null;
+  encounterIds: ID[];
+  /** Report sections keyed by short ids (pc, hx, ex, inv, dx, mx, out, disc, ref). */
+  sections: Record<string, string>;
+  status: 'draft' | 'submitted' | 'returned' | 'verified';
+  supervisorId?: ID | null;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+  deletedAt?: ISODateTime | null;
+}
+
 /** Everything the analytics layer needs, in one bundle. */
 export interface Dataset {
   requirementSet: RequirementSet;
@@ -427,4 +452,5 @@ export interface Dataset {
   reflections: Reflection[];
   /** Assessment forms (optional: analytics do not need them). */
   assessments?: Assessment[];
+  caseReports?: CaseReport[];
 }

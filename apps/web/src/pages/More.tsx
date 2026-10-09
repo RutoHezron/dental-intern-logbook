@@ -1,10 +1,11 @@
-import { CalendarRange, ClipboardList, ChevronRight, FileBarChart2, GraduationCap, PenLine, Printer, Settings, Trophy } from 'lucide-react';
+import { CalendarRange, ClipboardList, FileText, ChevronRight, FileBarChart2, GraduationCap, PenLine, Printer, Settings, Trophy } from 'lucide-react';
 import { Link } from 'react-router';
 import { PageHeader } from '../components/ui';
 import { SyncStatus } from '../components/Shell';
 
 const LINKS = [
   { to: '/sign-off', label: 'Supervisor sign-off', sub: 'Your supervisor verifies entries on this phone', Icon: PenLine },
+  { to: '/case-reports', label: 'Case reports', sub: 'Ten per rotation, drafted from your visits', Icon: FileText },
   { to: '/forms', label: 'Assessment forms', sub: 'Monthly, mid-rotation, end-of-rotation, overall', Icon: ClipboardList },
   { to: '/print', label: 'Print logbook pages', sub: 'KMPDC layout, filled from verified entries', Icon: Printer },
   { to: '/competencies', label: 'Competencies', sub: 'Levels and counts per logbook code', Icon: GraduationCap },

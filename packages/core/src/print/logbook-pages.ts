@@ -51,6 +51,15 @@ export interface IdentityBlock {
   periodTo: ISODate;
 }
 
+export interface CaseReportRow {
+  serial: number;
+  title: string;
+  date: string;
+  verificationRef: string;
+  supervisor: string;
+  pending: boolean;
+}
+
 export interface RotationPrint {
   kind: 'clinical';
   rotation: Rotation;
@@ -58,7 +67,8 @@ export interface RotationPrint {
   section: string;
   identity: IdentityBlock;
   tables: CodeTable[];
-  caseReportRows: number;
+  /** 5.x.5 Log of Case Reports: verified reports (and pending, if chosen), padded to the book's ten rows. */
+  caseReports: CaseReportRow[];
   verificationLog: VerificationLine[];
   integrity: string;
 }
@@ -132,17 +142,22 @@ function identity(ix: DatasetIndex, r: Rotation, trainingCentre: string): Identi
   };
 }
 
-function verificationLog(ix: DatasetIndex, entries: LogbookEntry[]): VerificationLine[] {
-  const ids = new Set(entries.map((e) => e.id));
+function verificationLog(ix: DatasetIndex, entries: LogbookEntry[], rotationId: string): VerificationLine[] {
   const byId = new Map(entries.map((e) => [e.id, e]));
+  const reports = new Map((ix.ds.caseReports ?? []).filter((r) => r.rotationId === rotationId).map((r) => [r.id, r]));
   const sup = new Map(ix.ds.supervisors.map((s) => [s.id, s.name]));
+  const target = (v: (typeof ix.ds.verifications)[number]) => {
+    if (v.entryId && byId.has(v.entryId)) return { code: byId.get(v.entryId)!.requirementCode, on: byId.get(v.entryId)!.performedOn };
+    if (v.caseReportId && reports.has(v.caseReportId)) return { code: 'Case report', on: reports.get(v.caseReportId)!.date };
+    return null;
+  };
   return ix.ds.verifications
-    .filter((v) => ids.has(v.entryId))
+    .filter((v) => target(v) !== null)
     .sort((a, b) => a.signedAt.localeCompare(b.signedAt))
     .map((v) => ({
       ref: v.hash.slice(0, REF_LEN),
-      code: byId.get(v.entryId)!.requirementCode,
-      performedOn: ddmmyyyy(byId.get(v.entryId)!.performedOn),
+      code: target(v)!.code,
+      performedOn: ddmmyyyy(target(v)!.on),
       verifier: sup.get(v.verifierId) ?? v.verifierId.slice(0, 8),
       method: v.method,
       signedAt: v.signedAt.slice(0, 16).replace('T', ' '),
@@ -162,7 +177,7 @@ export function buildRotationPrint(ix: DatasetIndex, rotationId: string, opts: P
     rotationName: def?.name ?? rotation.rotation,
     section: def?.section ?? '',
     identity: identity(ix, rotation, trainingCentre),
-    verificationLog: verificationLog(ix, entries),
+    verificationLog: verificationLog(ix, entries, rotation.id),
   };
   if (rotation.rotation === 'COMM') return buildCommunity(ix, base, entries, opts);
 
@@ -187,12 +202,35 @@ export function buildRotationPrint(ix: DatasetIndex, rotationId: string, opts: P
         integrity: integrityOf({ code: requirement.code, rows: filled }),
       };
     });
+  const sup = new Map(ix.ds.supervisors.map((s) => [s.id, s.name]));
+  const filledReports: CaseReportRow[] = (ix.ds.caseReports ?? [])
+    .filter((r) => !r.deletedAt && r.rotationId === rotation.id && (r.status === 'verified' || (opts.includePending && r.status === 'submitted')))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id))
+    .map((r, i) => ({
+      serial: i + 1,
+      title: r.title,
+      date: ddmmyyyy(r.date),
+      verificationRef: r.status === 'verified' ? ix.latest.get(r.id)?.hash.slice(0, REF_LEN) ?? '' : '',
+      supervisor: r.supervisorId ? sup.get(r.supervisorId) ?? '' : '',
+      pending: r.status !== 'verified',
+    }));
+  const caseReports = [
+    ...filledReports,
+    ...Array.from({ length: Math.max(0, 10 - filledReports.length) }, (_, i) => ({
+      serial: filledReports.length + i + 1,
+      title: '',
+      date: '',
+      verificationRef: '',
+      supervisor: '',
+      pending: false,
+    })),
+  ];
   return {
     kind: 'clinical',
     ...base,
     tables,
-    caseReportRows: 10,
-    integrity: integrityOf({ identity: base.identity, tables: tables.map((t) => t.integrity), printedOn: opts.printedOn }),
+    caseReports,
+    integrity: integrityOf({ identity: base.identity, tables: tables.map((t) => t.integrity), caseReports: filledReports, printedOn: opts.printedOn }),
   };
 }
 

@@ -104,7 +104,7 @@ export function buildReport(ix: DatasetIndex, period: Period, asOf: ISODate): Re
   const comments: SupervisorFeedbackItem[] = [];
   let levelAdjusted = 0;
   for (const v of vInPeriod) {
-    const e = entryById.get(v.entryId);
+    const e = v.entryId ? entryById.get(v.entryId) : undefined;
     if (!e) continue;
     if (v.levelObserved && v.levelObserved !== e.levelClaimed) levelAdjusted++;
     if (v.comment?.trim()) comments.push({ verification: v, code: e.requirementCode, performedOn: e.performedOn });

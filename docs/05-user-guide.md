@@ -62,6 +62,15 @@ Optional details live under *Diagnosis, investigations, referral and notes*. OMF
 
 The supervisor's PIN is stored only as a protected code on your phone. Never ask for it or record it.
 
+## Case reports
+
+The logbook expects ten case reports per rotation. **Case reports** shows how many are verified in each rotation.
+
+1. Open a visit (or a patient's case timeline) and tap **Write a case report**. The patient's visits are linked, and the facts are drafted from what you recorded: age and sex, complaint, findings, investigations, diagnosis, and each procedure with its date and your level. The hospital number is **not** copied into the report.
+2. Check the draft, then write the **discussion and learning points** in your own words. **Draft from linked visits** fills only empty sections and never overwrites what you wrote.
+3. Choose the supervisor and tap **Send for verification**.
+4. At your next **Supervisor sign-off**, the report appears for them to read and verify or return. Once verified it is locked, and it fills a row of the printed *Log of Case Reports*.
+
 ## Printing your logbook pages
 
 **Print logbook** (from the Logbook or More menu) produces the KMPDC case and procedure log for a rotation in the book's layout. It is filled from your verified entries and ready for your supervisor's signature and stamp. Each row shows a short digital reference that links it to the signed record in the app. Entries beyond the book's rows go on continuation sheets. You can include entries still awaiting verification if your supervisor prefers to sign the paper directly.

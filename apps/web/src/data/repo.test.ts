@@ -9,7 +9,9 @@ import {
   loadState,
   newId,
   RepoError,
+  deleteCaseReport,
   saveActivity,
+  saveCaseReport,
   saveEncounter,
   saveRotations,
   setSupervisorPin,
@@ -184,5 +186,35 @@ describe('repository', () => {
     await setSupervisorPin(supervisorId, '4071');
     const entry = (await db.entries.toArray())[0]!;
     await expect(signOff(supervisorId, '4071', [{ entryId: entry.id, decision: 'verified' }])).rejects.toThrow(/different supervisor/);
+  });
+
+  it('drafts, submits and signs a case report on the phone, then locks it', async () => {
+    const { id, ds } = await setup();
+    const supervisorId = (await db.supervisors.toArray())[0]!.id;
+    const base = {
+      id: newId(),
+      internshipId: id,
+      rotationId: ds.rotations[0]!.id,
+      date: '2025-11-10',
+      title: 'Pericoronitis of 38',
+      patientId: null,
+      encounterIds: [],
+      sections: { dx: 'Pericoronitis 38' },
+      status: 'draft' as const,
+      supervisorId,
+      createdAt: '',
+      updatedAt: '',
+    };
+    expect((await saveCaseReport(base, '2025-11-12', false)).status).toBe('draft');
+    await expect(saveCaseReport(base, '2025-11-12', true)).rejects.toThrow(/Management/);
+    const full = { ...base, sections: { dx: 'Pericoronitis 38', mx: 'Surgical extraction', disc: 'Plan sectioning early.' } };
+    expect((await saveCaseReport(full, '2025-11-12', true)).status).toBe('submitted');
+    await setSupervisorPin(supervisorId, '4071');
+    expect(await signOff(supervisorId, '4071', [{ caseReportId: base.id, decision: 'verified' }])).toEqual({ verified: 1, returned: 0 });
+    expect((await db.caseReports.get(base.id))!.status).toBe('verified');
+    const v = (await db.verifications.toArray())[0]!;
+    expect(v.caseReportId).toBe(base.id);
+    await expect(saveCaseReport({ ...full, title: 'Changed' }, '2025-11-12', false)).rejects.toThrow(/verified/);
+    await expect(deleteCaseReport(base.id)).rejects.toThrow(/cannot be deleted/);
   });
 });

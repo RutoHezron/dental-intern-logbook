@@ -256,15 +256,17 @@ function ClinicalLog({ p }: { p: RotationPrint }) {
             <th>CASE DESCRIPTION</th>
             <th className="w-[17%]">DATE</th>
             <th className="w-[22%]">SUPERVISOR SIGNATURE</th>
+            <th className="w-[11%]">Digital ref.</th>
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: p.caseReportRows }, (_, i) => (
-            <tr key={i}>
-              <td className="text-center">{i + 1}.</td>
-              <td />
-              <td />
-              <td className="paper-sign" />
+          {p.caseReports.map((r) => (
+            <tr key={r.serial}>
+              <td className="text-center">{r.serial}.</td>
+              <td className="text-[9pt]">{r.title}</td>
+              <td className="text-center tabular-nums">{r.date}</td>
+              <td className="paper-sign">{r.supervisor && <span className="paper-faint">{r.supervisor}</span>}</td>
+              <td className="paper-ref">{r.pending ? 'awaiting' : r.verificationRef}</td>
             </tr>
           ))}
         </tbody>

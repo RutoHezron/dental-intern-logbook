@@ -28,6 +28,8 @@ const PrintLogbookPage = named(() => import('./pages/PrintLogbook'), 'PrintLogbo
 const FormsPage = named(() => import('./pages/Forms'), 'FormsPage');
 const FormEditorPage = named(() => import('./pages/Forms'), 'FormEditorPage');
 const InternshipFormEditorPage = named(() => import('./pages/InternshipForms'), 'InternshipFormEditorPage');
+const CaseReportsPage = named(() => import('./pages/CaseReports'), 'CaseReportsPage');
+const CaseReportEditorPage = named(() => import('./pages/CaseReports'), 'CaseReportEditorPage');
 const SignOffPage = named(() => import('./pages/SignOff'), 'SignOffPage');
 const OnboardingPage = named(() => import('./pages/Onboarding'), 'OnboardingPage');
 
@@ -67,6 +69,9 @@ const routes: RouteObject[] = [
           { path: 'sign-off', element: <SignOffPage /> },
           { path: 'print', element: <PrintLogbookPage /> },
           { path: 'forms', element: <FormsPage /> },
+          { path: 'case-reports', element: <CaseReportsPage /> },
+          { path: 'case-reports/new', element: <CaseReportEditorPage /> },
+          { path: 'case-reports/:id', element: <CaseReportEditorPage /> },
           { path: 'forms/internship/:kind', element: <InternshipFormEditorPage /> },
           { path: 'forms/:rotationId/:kind/:sequence', element: <FormEditorPage /> },
           { path: '*', element: <Navigate to="/" replace /> },

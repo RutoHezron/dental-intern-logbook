@@ -32,6 +32,11 @@ export function PatientPage() {
       <PageHeader eyebrow="Case timeline" title={patient.ref}>
         {[patient.birthYear && `Born ${patient.birthYear}`, patient.sex, patient.systemicCondition && 'Systemic condition recorded'].filter(Boolean).join(' · ') || 'No demographic details recorded'}
       </PageHeader>
+      {visits.length > 0 && (
+        <Link to={`/case-reports/new?encounter=${visits.at(-1)!.id}`} className="btn btn-secondary">
+          Write a case report from these visits
+        </Link>
+      )}
       <p className="flex items-start gap-2 text-xs text-ink-3">
         <Lock size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
         Pseudonymous: identified by hospital number only, visible to you alone. The hospital file remains the clinical record.

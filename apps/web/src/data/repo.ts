@@ -1,6 +1,9 @@
 import {
   buildRotationCalendar,
   checkPin,
+  createCaseReportVerification,
+  validateCaseReport,
+  type CaseReport,
   validateAssessment,
   type Assessment,
   createVerification,
@@ -75,7 +78,7 @@ export async function loadState(): Promise<LoadedState> {
   const internship = await db.internships.get(internshipId);
   if (!internship) return { ...base, dataset: null, facility: null };
 
-  const [rules, facility, rotations, patients, supervisors, encounters, activities, entries, verifications, reflections] = await Promise.all([
+  const [rules, facility, rotations, patients, supervisors, encounters, activities, entries, verifications, reflections, caseReports] = await Promise.all([
     getMeta<CountingRules>(META.rules, DEFAULT_COUNTING_RULES),
     db.facilities.get(internship.facilityId),
     db.rotations.where('internshipId').equals(internshipId).toArray(),
@@ -86,6 +89,7 @@ export async function loadState(): Promise<LoadedState> {
     db.entries.toArray(),
     db.verifications.toArray(),
     db.reflections.toArray(),
+    db.caseReports.toArray(),
   ]);
   return {
     ...base,
@@ -102,6 +106,7 @@ export async function loadState(): Promise<LoadedState> {
       entries,
       verifications,
       reflections,
+      caseReports: caseReports.filter((r) => !r.deletedAt),
     },
   };
 }
@@ -178,6 +183,7 @@ export async function loadDemo(asOf: string): Promise<void> {
     await db.verifications.bulkPut(ds.verifications);
     await db.reflections.bulkPut(ds.reflections);
     if (ds.assessments) await db.assessments.bulkPut(ds.assessments);
+    if (ds.caseReports) await db.caseReports.bulkPut(ds.caseReports);
     await setMeta(META.activeInternship, ds.internship.id);
     await setMeta(META.rules, ds.rules);
     await setMeta(META.demo, { asOf });
@@ -451,7 +457,9 @@ export async function setSupervisorPin(supervisorId: string, pin: string): Promi
 }
 
 export interface SignOffDecision {
-  entryId: string;
+  /** Exactly one of entryId / caseReportId. */
+  entryId?: string;
+  caseReportId?: string;
   decision: 'verified' | 'returned';
   levelObserved?: Level;
   comment?: string;
@@ -470,12 +478,28 @@ export async function signOff(supervisorId: string, pin: string, decisions: Sign
   if (!decisions.length) throw new RepoError('No decisions to sign.');
   let verified = 0;
   let returned = 0;
-  await db.transaction('rw', [db.entries, db.verifications, db.outbox], async () => {
+  await db.transaction('rw', [db.entries, db.caseReports, db.verifications, db.outbox], async () => {
     const all = await db.verifications.toArray();
     let prevHash = all.sort((a, b) => a.signedAt.localeCompare(b.signedAt) || a.id.localeCompare(b.id)).at(-1)?.hash ?? null;
     let t = Date.now();
     for (const d of decisions) {
-      const entry = await db.entries.get(d.entryId);
+      if (d.caseReportId) {
+        const report = await db.caseReports.get(d.caseReportId);
+        if (!report || report.status !== 'submitted') throw new RepoError('A case report was changed while you were reviewing. Start the sign-off again.');
+        if ((report.supervisorId ?? null) !== supervisorId) throw new RepoError('A case report is assigned to a different supervisor.');
+        if (d.decision === 'returned' && !d.comment?.trim()) throw new RepoError('Say what needs fixing for each returned case report.');
+        const signedAt = new Date(t++).toISOString();
+        const v = createCaseReportVerification(report, { verifierId: supervisorId, decision: d.decision, comment: d.comment?.trim() || undefined, method: 'pin' }, prevHash, signedAt, newId());
+        prevHash = v.hash;
+        await db.verifications.put(v);
+        await db.caseReports.put({ ...report, status: statusAfter(v), updatedAt: signedAt });
+        await enqueue('caseReports', report.id);
+        await enqueue('verifications', v.id);
+        if (d.decision === 'verified') verified++;
+        else returned++;
+        continue;
+      }
+      const entry = d.entryId ? await db.entries.get(d.entryId) : undefined;
       if (!entry || entry.status !== 'submitted') throw new RepoError('An entry was changed while you were reviewing. Start the sign-off again.');
       if ((entry.supervisorId ?? null) !== supervisorId) throw new RepoError('An entry is assigned to a different supervisor.');
       if (d.decision === 'returned' && !d.comment?.trim()) throw new RepoError('Say what needs fixing for each returned entry.');
@@ -520,6 +544,37 @@ export async function saveAssessment(a: Assessment, rotationCode: string): Promi
   await enqueue('assessments', a.id);
 }
 
+// ---------------------------------------------------------------------------
+// Case reports
+// ---------------------------------------------------------------------------
+
+/**
+ * Save a case report; with `submit`, send it for verification. A returned
+ * report goes back to the supervisor when resubmitted. Verified reports are
+ * locked.
+ */
+export async function saveCaseReport(r: CaseReport, today: string, submit: boolean): Promise<CaseReport> {
+  const prev = await db.caseReports.get(r.id);
+  if (prev?.status === 'verified') throw new RepoError('This case report is verified and cannot be changed.');
+  const issues = validateCaseReport(r, today, submit);
+  const error = issues.find((i) => i.level === 'error');
+  if (error) throw new RepoError(error.message);
+  const now = nowISO();
+  const status: CaseReport['status'] = submit ? 'submitted' : prev?.status === 'submitted' ? 'submitted' : prev?.status === 'returned' ? 'returned' : 'draft';
+  const saved: CaseReport = { ...r, status, createdAt: prev?.createdAt ?? now, updatedAt: now, deletedAt: null };
+  await db.caseReports.put(saved);
+  await enqueue('caseReports', saved.id);
+  return saved;
+}
+
+export async function deleteCaseReport(id: string): Promise<void> {
+  const r = await db.caseReports.get(id);
+  if (!r) return;
+  if (r.status === 'verified') throw new RepoError('Verified case reports cannot be deleted.');
+  await db.caseReports.put({ ...r, deletedAt: nowISO() });
+  await enqueue('caseReports', id, 'delete');
+}
+
 export async function saveInternship(i: Internship): Promise<void> {
   await db.internships.put(i);
   await enqueue('internships', i.id);
@@ -547,7 +602,7 @@ export async function saveSnapshot(s: ReportSnapshot): Promise<void> {
 // Backup (full personal export, brief §19)
 // ---------------------------------------------------------------------------
 
-const BACKUP_TABLES = ['meta', 'facilities', 'internships', 'rotations', 'patients', 'supervisors', 'encounters', 'activities', 'entries', 'verifications', 'reflections', 'snapshots', 'assessments'] as const;
+const BACKUP_TABLES = ['meta', 'facilities', 'internships', 'rotations', 'patients', 'supervisors', 'encounters', 'activities', 'entries', 'verifications', 'reflections', 'snapshots', 'assessments', 'caseReports'] as const;
 
 export async function exportBackup(): Promise<string> {
   const out: Record<string, unknown> = { format: 'dental-intern-logbook-backup', version: 1, exportedAt: nowISO() };

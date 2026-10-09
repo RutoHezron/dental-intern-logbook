@@ -26,7 +26,9 @@ In the MVP every row belongs to one intern (`owner_id = auth.uid()`). The facili
 | `encounter_procedure`, `finding`, `investigation` | Children of an encounter, replaced on each push | Cascade on encounter delete |
 | `activity` | Evidence without a patient: postmortem, sessions, calls, talks, community items, case steps, weekly reports | Community item 1–16, report 1–8 |
 | `logbook_entry` | Derived entry per code | Exactly one source: an encounter or an activity |
-| `verification` | Supervisor decision | **Append-only**; a returned decision requires a comment |
+| `verification` | Supervisor decision on a logbook entry **or** a case report (exactly one) | **Append-only**; a returned decision requires a comment; sets the target's status |
+| `case_report` | Case report (5.x.5): title, date, linked visits, sections (JSON) | Status set only by verifications; content locked once verified |
+| `assessment` | Rotation forms and internship forms (5.8, 5.9) | One live form per slot; grades and answers as JSON keyed by form item |
 | `reflection` | Reflection diary | |
 | `report_snapshot` | Finalised report | SHA-256 checked as 64 hex characters |
 | `audit_log` | Who did what to which row | **No clinical content**; append-only |

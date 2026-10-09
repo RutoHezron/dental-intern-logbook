@@ -75,7 +75,7 @@ describe('synthetic demo internship (Dr Alex Mwangi)', () => {
   });
 
   it('has an intact verification hash chain', () => {
-    expect(checkVerificationChain(ds.verifications, new Map(ds.entries.map((e) => [e.id, e])))).toEqual([]);
+    expect(checkVerificationChain(ds.verifications, new Map(ds.entries.map((e) => [e.id, e])), new Map((ds.caseReports ?? []).map((r) => [r.id, r])))).toEqual([]);
   });
 
   it('shows realistic gaps: endodontics and crown & bridge below minimum', () => {
