@@ -1,5 +1,6 @@
 import { daysBetween, rotationEnd } from '@logbook/core';
 import {
+  ArrowRightLeft,
   BookOpen,
   CalendarRange,
   CircleAlert,
@@ -39,6 +40,7 @@ const SECONDARY = [
   { to: '/sign-off', label: 'Supervisor sign-off', Icon: PenLine },
   { to: '/print', label: 'Print logbook', Icon: Printer },
   { to: '/case-reports', label: 'Case reports', Icon: FileText },
+  { to: '/handover', label: 'Handover', Icon: ArrowRightLeft },
   { to: '/forms', label: 'Assessment forms', Icon: ClipboardList },
   { to: '/competencies', label: 'Competencies', Icon: GraduationCap },
   { to: '/portfolio', label: 'Portfolio', Icon: Trophy },

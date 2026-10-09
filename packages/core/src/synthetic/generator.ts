@@ -5,10 +5,12 @@ import { deriveActivity, deriveEncounter, reconcileEntries } from '../rules/deri
 import { buildRotationCalendar, rotationEnd, rotationForDate, rotationProgress } from '../rules/rotations';
 import { createCaseReportVerification, createVerification, statusAfter } from '../rules/verification';
 import { draftCaseReportFromVisits } from '../rules/case-reports';
+import { applyEncounterToPlan } from '../rules/treatment-plans';
 import type {
   Activity,
   Assessment,
   CaseReport,
+  TreatmentPlan,
   Dataset,
   Encounter,
   EncounterProcedure,
@@ -791,6 +793,55 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
   }
   reflections.sort((a, b) => a.date.localeCompare(b.date));
 
+  // ---------------------------------------------------------------- treatment plans (§11)
+  // Multi-visit care: a plan agreed at the first visit, then the patient's
+  // actual visits replayed through the same update rules the app uses.
+  const treatmentPlans: TreatmentPlan[] = [];
+  {
+    const byPatient = new Map<string, Encounter[]>();
+    for (const e of encounters) if (e.patientId) byPatient.set(e.patientId, [...(byPatient.get(e.patientId) ?? []), e]);
+    for (const [patientId, visits] of byPatient) {
+      const multiStage = visits.flatMap((v) => v.procedures).filter((pr) => (getProcedureType(pr.procedureTypeId)?.stages ?? 1) > 1);
+      const perioCourse = visits.length >= 3 && visits.some((v) => v.procedures.some((pr) => pr.procedureTypeId === 'root_planing'));
+      if (!multiStage.length && !perioCourse) continue;
+      const first = visits[0]!;
+      const items: TreatmentPlan['items'] = [];
+      const seen = new Set<string>();
+      for (const pr of multiStage) {
+        const key = `${pr.procedureTypeId}|${pr.sites.join(',')}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        items.push({ id: idOn(first.date), phase: 'definitive', procedureTypeId: pr.procedureTypeId, sites: pr.sites, status: 'planned' });
+      }
+      if (perioCourse) {
+        items.push({ id: idOn(first.date), phase: 'disease_control', procedureTypeId: 'scaling_polishing', sites: [], status: 'planned' });
+        items.push({ id: idOn(first.date), phase: 'disease_control', procedureTypeId: 'root_planing', sites: [], status: 'planned' });
+      }
+      items.push({ id: idOn(first.date), phase: 'review', procedureTypeId: 'exam_plan', sites: [], status: 'planned', dueOn: addDays(first.date, 90) });
+      let plan: TreatmentPlan = {
+        id: idOn(first.date),
+        internshipId,
+        patientId,
+        createdOn: first.date,
+        status: 'active',
+        items,
+        consentNote: 'Plan explained; verbal consent documented in the hospital file.',
+        createdAt: stamp(first.date, 12, 0),
+        updatedAt: stamp(first.date, 12, 0),
+        deletedAt: null,
+      };
+      for (const v of visits) plan = applyEncounterToPlan(plan, v).plan;
+      // Unfinished multi-stage treatment from a finished rotation was handed over.
+      const lastVisit = visits.at(-1)!;
+      const rot = rotations.find((r) => r.id === lastVisit.rotationId);
+      const unfinished = plan.items.some((i) => i.phase === 'definitive' && (i.status === 'planned' || i.status === 'in_progress'));
+      if (rot && rotationEnd(rot) < asOf && unfinished) {
+        plan = { ...plan, handoverNote: 'Temporary restoration in place; continue at next visit.', handoverTo: 'Incoming intern', handedOverOn: rotationEnd(rot) };
+      }
+      treatmentPlans.push(plan);
+    }
+  }
+
   const dataset: Dataset = {
     requirementSet: set,
     rules,
@@ -804,6 +855,7 @@ export function generateDemoDataset(options: SyntheticOptions = {}): Dataset {
     verifications,
     reflections,
     caseReports,
+    treatmentPlans,
   };
   dataset.assessments = demoAssessments(dataset, asOf, { pick, int, idOn, stamp });
   return dataset;

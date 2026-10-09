@@ -20,7 +20,8 @@ export type ClientTable =
   | 'reflections'
   | 'snapshots'
   | 'assessments'
-  | 'caseReports';
+  | 'caseReports'
+  | 'treatmentPlans';
 
 export const SERVER_TABLE: Record<ClientTable, string> = {
   facilities: 'facility',
@@ -36,6 +37,7 @@ export const SERVER_TABLE: Record<ClientTable, string> = {
   snapshots: 'report_snapshot',
   assessments: 'assessment',
   caseReports: 'case_report',
+  treatmentPlans: 'treatment_plan',
 };
 
 export const CLIENT_TABLE: Record<string, ClientTable> = Object.fromEntries(
@@ -50,6 +52,7 @@ export const PUSH_ORDER: ClientTable[] = [
   'rotations',
   'patients',
   'encounters',
+  'treatmentPlans',
   'activities',
   'entries',
   'reflections',

@@ -12,6 +12,7 @@ import {
   deleteCaseReport,
   saveActivity,
   saveCaseReport,
+  saveTreatmentPlan,
   saveEncounter,
   saveRotations,
   setSupervisorPin,
@@ -216,5 +217,28 @@ describe('repository', () => {
     expect(v.caseReportId).toBe(base.id);
     await expect(saveCaseReport({ ...full, title: 'Changed' }, '2025-11-12', false)).rejects.toThrow(/verified/);
     await expect(deleteCaseReport(base.id)).rejects.toThrow(/cannot be deleted/);
+  });
+
+  it("records a visit against the patient's treatment plan when it is saved", async () => {
+    const { id } = await setup();
+    await saveEncounter(visit(id), { ref: 'OP-25-9', birthYear: 1990 });
+    const patient = (await db.patients.toArray())[0]!;
+    await saveTreatmentPlan({
+      id: 'plan-1',
+      internshipId: id,
+      patientId: patient.id,
+      createdOn: '2025-11-03',
+      status: 'active',
+      items: [{ id: 'i1', phase: 'definitive', procedureTypeId: 'rct', sites: ['46'], status: 'planned' }],
+      createdAt: '',
+      updatedAt: '',
+    });
+    const res = await saveEncounter(
+      visit(id, { date: '2025-11-10', visitType: 'continuing', procedures: [{ id: newId(), procedureTypeId: 'rct', sites: ['46'], stage: 1, level: 4 }] }),
+      { ref: 'OP-25-9' },
+    );
+    expect(res.planChanges).toEqual(['RCT 46: stage 1 of 3 done (Access & extirpation); next: Cleaning & shaping']);
+    expect((await db.treatmentPlans.get('plan-1'))!.items[0]).toMatchObject({ status: 'in_progress', stageDone: 1 });
+    await expect(saveTreatmentPlan({ ...(await db.treatmentPlans.get('plan-1'))!, items: [] })).rejects.toThrow(/at least one/);
   });
 });

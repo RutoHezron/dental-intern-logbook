@@ -31,6 +31,7 @@ An intern logs a visit in under a minute: patient number, teeth, procedure, thei
 | **Case reports** | Ten per rotation, as the logbook expects. Started from a patient's visits, the facts (age and sex, complaint, findings, investigations, diagnosis, procedures with dates and levels, referral) are drafted without copying the hospital number; the intern writes the discussion. Verified with the same PIN sign-off and hash chain as logbook entries, locked once verified, and filling the printed *Log of Case Reports*. |
 | **End of internship** | 5.8 End of internship evaluation and 5.9 Verification of completion, pre-filled with identity and the rotation dates from the calendar (including extensions), plus a *Ready for KMPDC?* checklist: rotations finished, forms complete, every rotation recorded as completed, minimums met, and no entries left open. |
 | **Android app** | The same app wrapped with Capacitor (`apps/web/android`). Data stays in app-private storage, and Android cloud backup is disabled. |
+| **Treatment plans & handover** | A phased plan per patient (urgent, disease control, definitive, maintenance, review) built from treatments and teeth, never from logbook codes. Logging a visit updates matching items, including root canal stages; the plan is closed only by the intern. Before a returning patient's visit a next-visit brief shows the last visit, work in progress, what is planned next and alerts. **Today** lists overdue and due items, and **Handover** lists patients with unfinished treatment before the rotation ends, with a note and receiving intern, and prints. |
 | **Sync (optional)** | Outbox-based offline sync to Supabase/Postgres with email one-time-code sign-in. Status shows synced, pending or error. |
 
 ## Repository layout
@@ -66,15 +67,15 @@ Open http://localhost:5173 and choose **Open the demo** (Dr Alex Mwangi, a ficti
 npm test
 ```
 
-This runs 178 unit and integration tests across three packages:
+This runs 188 unit and integration tests across three packages:
 
 | Package | Tests | Covers |
 |---|---|---|
-| `@logbook/core` | 121 | Catalogue integrity (42 codes / 762 minimums), the blueprint's worked mapping examples, counting rules, reconciliation, hash chain, validation and the identifier guard, periods, compounding (weekly and monthly sums equal the cumulative total), reports, snapshots, portfolio wording, deterministic synthetic data |
-| `@logbook/db` | 30 | Real migrations in PGlite: no identity columns on patients, push/pull round trip, cursors, tombstones, per-change rejection, row-level isolation, ownership pinning, verified-entry guard, append-only verifications, audit trail |
-| `@logbook/web` | 27 | Repository against IndexedDB (including PIN sign-off and its hash chain), on-phone storage and backup reminders, Quick Entry UI flow, and the sync engine end to end (device ↔ Postgres, second-device restore, sign-off synced, edits to verified entries refused, local-edit protection) |
+| `@logbook/core` | 128 | Catalogue integrity (42 codes / 762 minimums), the blueprint's worked mapping examples, counting rules, reconciliation, hash chain, validation and the identifier guard, periods, compounding (weekly and monthly sums equal the cumulative total), reports, snapshots, portfolio wording, treatment plan updates and handover lists, deterministic synthetic data |
+| `@logbook/db` | 32 | Real migrations in PGlite: no identity columns on patients, push/pull round trip, cursors, tombstones, per-change rejection, row-level isolation, ownership pinning, verified-entry guard, append-only verifications, audit trail |
+| `@logbook/web` | 28 | Repository against IndexedDB (including PIN sign-off and its hash chain), on-phone storage and backup reminders, Quick Entry UI flow, and the sync engine end to end (device ↔ Postgres, second-device restore, sign-off synced, edits to verified entries refused, local-edit protection) |
 
-The end-to-end browser tests (21) run against the production build with the service worker, using the locally installed Chrome:
+The end-to-end browser tests (22) run against the production build with the service worker, using the locally installed Chrome:
 
 ```bash
 npm run test:e2e -w @logbook/web
@@ -132,6 +133,6 @@ The debug APK is written to `apps/web/android/app/build/outputs/apk/debug/app-de
 
 ## Status
 
-The MVP (M1–M4) is complete, with phone-first storage and the Android app shell. V1 so far adds supervisor sign-off on the phone, printed KMPDC logbook pages, the rotation assessment forms, the end-of-internship and completion forms (5.8, 5.9) with a readiness checklist, and case reports. Still to come in V1: treatment plans with next-visit briefs and rotation handover, and server-side supervisor accounts. See [docs/01-architecture.md § Roadmap](docs/01-architecture.md#roadmap).
+The MVP (M1–M4) is complete, with phone-first storage and the Android app shell. V1 so far adds supervisor sign-off on the phone, printed KMPDC logbook pages, the rotation assessment forms, the end-of-internship and completion forms (5.8, 5.9) with a readiness checklist, case reports, and treatment plans with next-visit briefs and rotation handover. Still to come in V1: server-side supervisor accounts, so supervisors sign from their own phones. See [docs/01-architecture.md § Roadmap](docs/01-architecture.md#roadmap).
 
 Counting rules R1–R10 are **defaults** until a training centre confirms them (KMPDC does not define them), and the app labels them that way. Procedure counts show recorded exposure; the app does not certify competence.

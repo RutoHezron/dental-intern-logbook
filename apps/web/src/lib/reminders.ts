@@ -1,5 +1,6 @@
 import {
   daysBetween,
+  handoverList,
   internshipMonth,
   internshipWeek,
   isWeekend,
@@ -83,6 +84,18 @@ export function computeReminders(
 
   for (const r of rotations) {
     const left = daysBetween(today, rotationEnd(r));
+    if (r.startsOn <= today && left >= 0 && left <= 14) {
+      const open = handoverList(ix, ix.ds.treatmentPlans ?? [], r).filter((h) => !h.plan.handedOverOn).length;
+      if (open) {
+        out.push({
+          id: `handover-${r.id}`,
+          tone: 'warning',
+          text: `${open} patient${open === 1 ? ' has' : 's have'} unfinished treatment. Prepare the handover before the rotation ends.`,
+          to: `/handover?rotation=${r.id}`,
+          action: 'Handover',
+        });
+      }
+    }
     const name = ix.ds.requirementSet.rotations.find((x) => x.code === r.rotation)?.name ?? r.rotation;
     if (r.startsOn <= today && left >= 0 && left <= 14) {
       out.push({

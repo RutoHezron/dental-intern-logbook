@@ -12,6 +12,7 @@ export * from './rules/validation';
 export * from './rules/review-checks';
 export * from './rules/assessments';
 export * from './rules/case-reports';
+export * from './rules/treatment-plans';
 
 export * from './analytics/dataset-index';
 export * from './analytics/periods';

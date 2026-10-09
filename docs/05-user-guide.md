@@ -71,6 +71,17 @@ The logbook expects ten case reports per rotation. **Case reports** shows how ma
 3. Choose the supervisor and tap **Send for verification**.
 4. At your next **Supervisor sign-off**, the report appears for them to read and verify or return. Once verified it is locked, and it fills a row of the printed *Log of Case Reports*.
 
+## Treatment plans and handover
+
+Open a patient's **case timeline** and tap **Create plan**. Add each treatment with its teeth, phase (urgent, disease control, definitive, maintenance, review) and, if you like, a due date. Plans are clinical: they list treatments, never logbook codes or targets.
+
+- When you log a visit, matching plan items update for you: a root canal moves stage by stage, a filling is marked complete. The review shows what will change before you save. A review item is completed only by a later visit, not the one where the plan was agreed.
+- When you enter a returning patient's number, the **next-visit brief** shows the last visit, treatment in progress, what is planned next and any alerts.
+- **Today** lists overdue and due-soon items.
+- Before your rotation ends, **Handover** lists patients with unfinished treatment. Add a note and the receiving intern, save, and print the list for the incoming team.
+
+Only you close a plan.
+
 ## Printing your logbook pages
 
 **Print logbook** (from the Logbook or More menu) produces the KMPDC case and procedure log for a rotation in the book's layout. It is filled from your verified entries and ready for your supervisor's signature and stamp. Each row shows a short digital reference that links it to the signed record in the app. Entries beyond the book's rows go on continuation sheets. You can include entries still awaiting verification if your supervisor prefers to sign the paper directly.

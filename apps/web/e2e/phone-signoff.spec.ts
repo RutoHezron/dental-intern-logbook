@@ -51,6 +51,7 @@ test('storage is set up on first launch, and a supervisor signs entries on the p
   await page.getByRole('button', { name: 'Tooth 46' }).click();
   await page.getByRole('radio', { name: 'Level 4: Indirect supervision' }).click();
   await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText(/sent for verification/)).toBeVisible();
   await page.goto('/sign-off');
   await page.getByRole('button', { name: /Hand the phone to Dr Signing Supervisor/ }).click();
   await page.getByRole('button', { name: /Verify all remaining/ }).click();

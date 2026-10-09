@@ -100,7 +100,7 @@ beforeAll(async () => {
 beforeEach(async () => {
   await asAdmin(db);
   await db.exec(`
-    truncate public.case_report, public.assessment, public.verification, public.logbook_entry, public.reflection, public.report_snapshot,
+    truncate public.treatment_plan, public.case_report, public.assessment, public.verification, public.logbook_entry, public.reflection, public.report_snapshot,
              public.activity, public.encounter_procedure, public.finding, public.investigation,
              public.encounter, public.patient, public.rotation, public.supervisor, public.internship,
              public.facility cascade;
@@ -547,5 +547,42 @@ describe('case reports', () => {
     expect(await status()).toBe('returned');
     await rpc(db, 'sync_push', [JSON.stringify([{ ...report, record: { ...report.record, status: 'submitted', sections: { dx: 'x', mx: 'y', disc: 'Expanded' } } }])]);
     expect(await status()).toBe('submitted');
+  });
+});
+
+describe('treatment plans', () => {
+  const plan = (d: ReturnType<typeof deviceData>, over: Record<string, unknown> = {}) => ({
+    table: 'treatment_plan',
+    op: 'upsert' as const,
+    record: {
+      id: uuidv7(),
+      internship_id: d.internship.id,
+      patient_id: d.patient.id,
+      created_on: '2025-11-03',
+      status: 'active',
+      items: [{ id: 'i1', phase: 'definitive', procedure_type_id: 'rct', sites: ['46'], status: 'in_progress', stage_done: 1 }],
+      ...over,
+    },
+  });
+
+  it('round-trips a plan with its items, privately', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    const res = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([...changesFor(d), plan(d)])]);
+    expect(res.rejected).toEqual([]);
+    const pull = await rpc<PullResult>(db, 'sync_pull', [0]);
+    const round = fromWire<{ items: { procedureTypeId: string; stageDone: number }[] }>(pull.changes.treatment_plan![0]!);
+    expect(round.items[0]).toMatchObject({ procedureTypeId: 'rct', stageDone: 1 });
+    await actAs(db, BOB);
+    expect((await rpc<PullResult>(db, 'sync_pull', [0])).changes.treatment_plan).toEqual([]);
+  });
+
+  it('pulls every registered table, and the registry is not writable by users', async () => {
+    await actAs(db, ALICE);
+    const pull = await rpc<PullResult>(db, 'sync_pull', [0]);
+    expect(Object.keys(pull.changes).sort()).toEqual(
+      ['activity', 'assessment', 'case_report', 'encounter', 'facility', 'internship', 'logbook_entry', 'patient', 'reflection', 'report_snapshot', 'rotation', 'supervisor', 'treatment_plan', 'verification'].sort(),
+    );
+    await expect(db.query(`insert into public.sync_table values ('audit_log', 99, true)`)).rejects.toThrow(/permission denied/);
   });
 });

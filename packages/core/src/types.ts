@@ -437,6 +437,42 @@ export interface CaseReport {
   deletedAt?: ISODateTime | null;
 }
 
+// ---------------------------------------------------------------------------
+// Treatment plans (blueprint §11) — set by the clinician, never by the app
+// ---------------------------------------------------------------------------
+
+export interface PlanItem {
+  id: ID;
+  phase: 'urgent' | 'disease_control' | 'definitive' | 'review' | 'maintenance';
+  procedureTypeId: string;
+  otherName?: string;
+  sites: string[];
+  status: 'planned' | 'in_progress' | 'completed' | 'deferred' | 'cancelled' | 'declined' | 'referred';
+  /** Highest stage done, for multi-stage procedures. */
+  stageDone?: number;
+  dueOn?: ISODate;
+  completedOn?: ISODate;
+  lastEncounterId?: ID;
+  note?: string;
+}
+
+export interface TreatmentPlan {
+  id: ID;
+  internshipId: ID;
+  patientId: ID;
+  createdOn: ISODate;
+  status: 'active' | 'completed' | 'abandoned';
+  items: PlanItem[];
+  consentNote?: string;
+  /** Rotation handover (intern duty 2.3 j). */
+  handoverNote?: string;
+  handoverTo?: string;
+  handedOverOn?: ISODate;
+  createdAt: ISODateTime;
+  updatedAt: ISODateTime;
+  deletedAt?: ISODateTime | null;
+}
+
 /** Everything the analytics layer needs, in one bundle. */
 export interface Dataset {
   requirementSet: RequirementSet;
@@ -453,4 +489,5 @@ export interface Dataset {
   /** Assessment forms (optional: analytics do not need them). */
   assessments?: Assessment[];
   caseReports?: CaseReport[];
+  treatmentPlans?: TreatmentPlan[];
 }

@@ -3,6 +3,7 @@ import type {
   Activity,
   Assessment,
   CaseReport,
+  TreatmentPlan,
   CountingRules,
   Encounter,
   Facility,
@@ -35,7 +36,8 @@ export type SyncTable =
   | 'reflections'
   | 'snapshots'
   | 'assessments'
-  | 'caseReports';
+  | 'caseReports'
+  | 'treatmentPlans';
 
 export interface OutboxItem {
   seq?: number;
@@ -76,6 +78,7 @@ export class LogbookDB extends Dexie {
   snapshots!: Table<ReportSnapshot, string>;
   assessments!: Table<Assessment, string>;
   caseReports!: Table<CaseReport, string>;
+  treatmentPlans!: Table<TreatmentPlan, string>;
   outbox!: Table<OutboxItem, number>;
 
   constructor(name = 'dental-intern-logbook') {
@@ -99,6 +102,8 @@ export class LogbookDB extends Dexie {
     this.version(2).stores({ assessments: 'id, rotationId, kind' });
     // v3: case reports.
     this.version(3).stores({ caseReports: 'id, rotationId, status' });
+    // v4: treatment plans.
+    this.version(4).stores({ treatmentPlans: 'id, patientId, status' });
   }
 }
 

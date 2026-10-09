@@ -28,6 +28,7 @@ In the MVP every row belongs to one intern (`owner_id = auth.uid()`). The facili
 | `logbook_entry` | Derived entry per code | Exactly one source: an encounter or an activity |
 | `verification` | Supervisor decision on a logbook entry **or** a case report (exactly one) | **Append-only**; a returned decision requires a comment; sets the target's status |
 | `case_report` | Case report (5.x.5): title, date, linked visits, sections (JSON) | Status set only by verifications; content locked once verified |
+| `treatment_plan` | Per-patient plan with items (JSON): phase, treatment, teeth, status, stage, handover note | Owner-only; synced through the `sync_table` registry |
 | `assessment` | Rotation forms and internship forms (5.8, 5.9) | One live form per slot; grades and answers as JSON keyed by form item |
 | `reflection` | Reflection diary | |
 | `report_snapshot` | Finalised report | SHA-256 checked as 64 hex characters |

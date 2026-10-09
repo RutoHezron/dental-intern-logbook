@@ -2,6 +2,9 @@ import {
   computeStats,
   daysBetween,
   displayDate,
+  dueSoon,
+  itemLabel,
+  stageText,
   generateInsights,
   getActivityType,
   getProcedureType,
@@ -19,7 +22,7 @@ import { LevelLadder, PageHeader, ProgressBar, RotationDot, Section, StatusBadge
 import { computeReminders } from '../lib/reminders';
 import { isNative } from '../storage/device';
 import { useDeviceStorage } from '../storage/StorageProvider';
-import { plural, ROTATION_VAR, rotationName } from '../lib/format';
+import { fmtShort, plural, ROTATION_VAR, rotationName } from '../lib/format';
 import { analyticsDate, useInternship } from '../state/AppData';
 
 // The charting library is large; load it after the rest of the dashboard.
@@ -217,6 +220,8 @@ export function TodayPage() {
         </Section>
       </div>
 
+      <OpenTreatment />
+
       <Section title="Today" aside={<Link to="/logbook">Logbook</Link>}>
         {data.todays.length === 0 ? (
           <p className="text-sm text-ink-2">Nothing logged today yet.</p>
@@ -291,5 +296,42 @@ function RotationGaps() {
         );
       })}
     </ul>
+  );
+}
+
+/** Treatment due soon, overdue or in progress (from the intern's own plans). */
+function OpenTreatment() {
+  const { ix, ds, today } = useInternship();
+  const due = dueSoon(ix, ds.treatmentPlans ?? [], today, 7);
+  if (!due.length) return null;
+  const byPatient = new Map<string, typeof due>();
+  for (const d of due) byPatient.set(d.plan.patientId, [...(byPatient.get(d.plan.patientId) ?? []), d]);
+  return (
+    <Section title="Open treatment" aside={<Link to="/handover">Handover</Link>}>
+      <ul className="divide-y divide-line">
+        {[...byPatient.entries()].slice(0, 8).map(([pid, items]) => (
+          <li key={pid}>
+            <Link to={`/patients/${pid}`} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2.5 text-sm">
+              <span className="code">{items[0]!.patient?.ref ?? '—'}</span>
+              <span className="min-w-0 flex-1 text-ink-2">
+                {items.map((d, k) => (
+                  <span key={d.item.id}>
+                    {k > 0 && ' · '}
+                    {itemLabel(d.item)}
+                    {d.item.status === 'in_progress' && stageText(d.item) ? ` (${stageText(d.item)!.split(';')[0]})` : ''}
+                    {d.item.dueOn && (
+                      <span style={d.overdue ? { color: 'var(--critical-ink)' } : undefined}>
+                        {' '}
+                        — {d.overdue ? 'overdue since' : 'due'} {fmtShort(d.item.dueOn)}
+                      </span>
+                    )}
+                  </span>
+                ))}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </Section>
   );
 }

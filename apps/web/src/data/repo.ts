@@ -1,6 +1,8 @@
 import {
   buildRotationCalendar,
   checkPin,
+  applyEncounterToPlan,
+  type TreatmentPlan,
   createCaseReportVerification,
   validateCaseReport,
   type CaseReport,
@@ -78,7 +80,7 @@ export async function loadState(): Promise<LoadedState> {
   const internship = await db.internships.get(internshipId);
   if (!internship) return { ...base, dataset: null, facility: null };
 
-  const [rules, facility, rotations, patients, supervisors, encounters, activities, entries, verifications, reflections, caseReports] = await Promise.all([
+  const [rules, facility, rotations, patients, supervisors, encounters, activities, entries, verifications, reflections, caseReports, treatmentPlans] = await Promise.all([
     getMeta<CountingRules>(META.rules, DEFAULT_COUNTING_RULES),
     db.facilities.get(internship.facilityId),
     db.rotations.where('internshipId').equals(internshipId).toArray(),
@@ -90,6 +92,7 @@ export async function loadState(): Promise<LoadedState> {
     db.verifications.toArray(),
     db.reflections.toArray(),
     db.caseReports.toArray(),
+    db.treatmentPlans.toArray(),
   ]);
   return {
     ...base,
@@ -107,6 +110,7 @@ export async function loadState(): Promise<LoadedState> {
       verifications,
       reflections,
       caseReports: caseReports.filter((r) => !r.deletedAt),
+      treatmentPlans: treatmentPlans.filter((p) => !p.deletedAt),
     },
   };
 }
@@ -184,6 +188,7 @@ export async function loadDemo(asOf: string): Promise<void> {
     await db.reflections.bulkPut(ds.reflections);
     if (ds.assessments) await db.assessments.bulkPut(ds.assessments);
     if (ds.caseReports) await db.caseReports.bulkPut(ds.caseReports);
+    if (ds.treatmentPlans) await db.treatmentPlans.bulkPut(ds.treatmentPlans);
     await setMeta(META.activeInternship, ds.internship.id);
     await setMeta(META.rules, ds.rules);
     await setMeta(META.demo, { asOf });
@@ -240,6 +245,8 @@ export interface SaveResult {
   withdrawn: number;
   /** Verified entries the change would alter: they need a correction, not an edit. */
   conflicts: LogbookEntry[];
+  /** Updates made to the patient's treatment plan by this visit. */
+  planChanges: string[];
 }
 
 async function context(internshipId: string) {
@@ -270,7 +277,7 @@ export async function previewEncounter(encounter: Encounter, patient: PatientInp
 }
 
 export async function saveEncounter(draft: Encounter, patientInput: PatientInput | null): Promise<SaveResult> {
-  return db.transaction('rw', [db.encounters, db.entries, db.patients, db.rotations, db.meta, db.outbox], async () => {
+  return db.transaction('rw', [db.encounters, db.entries, db.patients, db.rotations, db.meta, db.outbox, db.treatmentPlans], async () => {
     const { rotations, rules } = await context(draft.internshipId);
     const patient = patientInput?.ref?.trim() ? await upsertPatient(patientInput) : null;
     const now = nowISO();
@@ -307,7 +314,19 @@ export async function saveEncounter(draft: Encounter, patientInput: PatientInput
       await db.entries.put(e);
       await enqueue('entries', e.id);
     }
-    return { derivation, created: rec.create.length, withdrawn: rec.withdraw.length, conflicts: rec.conflicts };
+    // Record the visit against the patient's active plan(s).
+    const planChanges: string[] = [];
+    if (patient) {
+      for (const plan of await db.treatmentPlans.where('patientId').equals(patient.id).toArray()) {
+        if (plan.deletedAt) continue;
+        const u = applyEncounterToPlan(plan, encounter);
+        if (!u.changes.length) continue;
+        await db.treatmentPlans.put({ ...u.plan, updatedAt: now });
+        await enqueue('treatmentPlans', plan.id);
+        planChanges.push(...u.changes);
+      }
+    }
+    return { derivation, created: rec.create.length, withdrawn: rec.withdraw.length, conflicts: rec.conflicts, planChanges };
   });
 }
 
@@ -358,7 +377,7 @@ export async function saveActivity(draft: Activity): Promise<SaveResult> {
       await db.entries.put(e);
       await enqueue('entries', e.id);
     }
-    return { derivation, created: rec.create.length, withdrawn: rec.withdraw.length, conflicts: rec.conflicts };
+    return { derivation, created: rec.create.length, withdrawn: rec.withdraw.length, conflicts: rec.conflicts, planChanges: [] };
   });
 }
 
@@ -575,6 +594,18 @@ export async function deleteCaseReport(id: string): Promise<void> {
   await enqueue('caseReports', id, 'delete');
 }
 
+// ---------------------------------------------------------------------------
+// Treatment plans
+// ---------------------------------------------------------------------------
+
+export async function saveTreatmentPlan(p: TreatmentPlan): Promise<void> {
+  if (!p.items.length) throw new RepoError('Add at least one planned treatment.');
+  const now = nowISO();
+  const prev = await db.treatmentPlans.get(p.id);
+  await db.treatmentPlans.put({ ...p, createdAt: prev?.createdAt ?? now, updatedAt: now, deletedAt: null });
+  await enqueue('treatmentPlans', p.id);
+}
+
 export async function saveInternship(i: Internship): Promise<void> {
   await db.internships.put(i);
   await enqueue('internships', i.id);
@@ -602,7 +633,7 @@ export async function saveSnapshot(s: ReportSnapshot): Promise<void> {
 // Backup (full personal export, brief §19)
 // ---------------------------------------------------------------------------
 
-const BACKUP_TABLES = ['meta', 'facilities', 'internships', 'rotations', 'patients', 'supervisors', 'encounters', 'activities', 'entries', 'verifications', 'reflections', 'snapshots', 'assessments', 'caseReports'] as const;
+const BACKUP_TABLES = ['meta', 'facilities', 'internships', 'rotations', 'patients', 'supervisors', 'encounters', 'activities', 'entries', 'verifications', 'reflections', 'snapshots', 'assessments', 'caseReports', 'treatmentPlans'] as const;
 
 export async function exportBackup(): Promise<string> {
   const out: Record<string, unknown> = { format: 'dental-intern-logbook-backup', version: 1, exportedAt: nowISO() };

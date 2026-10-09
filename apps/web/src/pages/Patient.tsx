@@ -1,6 +1,7 @@
 import { getProcedureType } from '@logbook/core';
 import { Lock } from 'lucide-react';
 import { Link, useParams } from 'react-router';
+import { PatientBriefCard, TreatmentPlanCard } from '../components/TreatmentPlan';
 import { LevelLadder, PageHeader, RotationDot } from '../components/ui';
 import { fmtDate } from '../lib/format';
 import { useInternship } from '../state/AppData';
@@ -12,7 +13,7 @@ import { EntryChip } from './Logbook';
  */
 export function PatientPage() {
   const { id = '' } = useParams();
-  const { ix } = useInternship();
+  const { ix, ds } = useInternship();
   const patient = ix.patients.get(id);
   if (!patient) return <PageHeader title="Patient not found" />;
   const visits = ix.encounters.filter((e) => e.patientId === id).sort((a, b) => a.date.localeCompare(b.date));
@@ -32,16 +33,23 @@ export function PatientPage() {
       <PageHeader eyebrow="Case timeline" title={patient.ref}>
         {[patient.birthYear && `Born ${patient.birthYear}`, patient.sex, patient.systemicCondition && 'Systemic condition recorded'].filter(Boolean).join(' · ') || 'No demographic details recorded'}
       </PageHeader>
-      {visits.length > 0 && (
-        <Link to={`/case-reports/new?encounter=${visits.at(-1)!.id}`} className="btn btn-secondary">
-          Write a case report from these visits
+      <PatientBriefCard patientId={patient.id} />
+      <TreatmentPlanCard patientId={patient.id} />
+      <div className="flex flex-wrap gap-2">
+        <Link to={`/log?patient=${encodeURIComponent(patient.ref)}`} className="btn btn-primary">
+          Log a visit for this patient
         </Link>
-      )}
+        {visits.length > 0 && (
+          <Link to={`/case-reports/new?encounter=${visits.at(-1)!.id}`} className="btn btn-secondary">
+            Write a case report from these visits
+          </Link>
+        )}
+      </div>
       <p className="flex items-start gap-2 text-xs text-ink-3">
         <Lock size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
         Pseudonymous: identified by hospital number only, visible to you alone. The hospital file remains the clinical record.
       </p>
-      {openStages.size > 0 && (
+      {openStages.size > 0 && !(ds.treatmentPlans ?? []).some((p) => p.patientId === patient.id && p.status === 'active') && (
         <div className="card p-4">
           <h2 className="mb-2 text-[15px] font-semibold">Open treatment</h2>
           <ul className="space-y-1 text-sm">

@@ -1,5 +1,6 @@
 import {
   ACTIVITY_TYPES,
+  applyEncounterToPlan,
   COMMUNITY_CASE_TYPES,
   COMMUNITY_ITEMS,
   deriveActivity,
@@ -31,6 +32,7 @@ import { ChevronDown, Info, Repeat, Search, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router';
 import { ToothChart } from '../components/ToothChart';
+import { PatientBriefCard } from '../components/TreatmentPlan';
 import { LevelPicker, PageHeader, RotationDot, Segmented, ToneNote, useToast } from '../components/ui';
 import { deleteActivity, deleteEncounter, newId, normaliseRef, RepoError, saveActivity, saveEncounter, savePreferences, saveSupervisor } from '../data/repo';
 import { rotationName } from '../lib/format';
@@ -190,7 +192,7 @@ function SupervisorSelect({ value, onChange }: { value: string | null | undefine
 }
 
 /** What the save will create: codes and rules, plus reasons for anything not counted. */
-function ReviewStrip({ derivation, issues }: { derivation: Derivation | null; issues: Issue[] }) {
+function ReviewStrip({ derivation, issues, planChanges = [] }: { derivation: Derivation | null; issues: Issue[]; planChanges?: string[] }) {
   return (
     <section aria-label="What this entry will log" aria-live="polite" className="rounded-[14px] border border-line bg-surface-2 p-4">
       <div className="eyebrow mb-2">Will be logged</div>
@@ -209,6 +211,16 @@ function ReviewStrip({ derivation, issues }: { derivation: Derivation | null; is
         </ul>
       ) : (
         <p className="text-sm text-ink-3">Add a procedure to see which logbook codes it will count toward.</p>
+      )}
+      {planChanges.length > 0 && (
+        <div className="mt-3">
+          <div className="eyebrow mb-1">Treatment plan</div>
+          <ul className="space-y-1 text-sm text-ink-2">
+            {planChanges.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+        </div>
       )}
       {issues.length > 0 && (
         <ul className="mt-3 space-y-1.5">
@@ -395,7 +407,7 @@ function VisitForm({ id }: { id?: string }) {
       },
   );
   const [patient, setPatient] = useState<PatientForm>({
-    ref: existingPatient?.ref ?? '',
+    ref: existingPatient?.ref ?? params.get('patient') ?? '',
     birthYear: existingPatient?.birthYear ? String(existingPatient.birthYear) : '',
     sex: existingPatient?.sex ?? '',
     systemicCondition: existingPatient?.systemicCondition ?? false,
@@ -451,6 +463,12 @@ function VisitForm({ id }: { id?: string }) {
     [JSON.stringify(draft), JSON.stringify(previewPatient), today],
   );
   const verifiedCount = existing ? ix.entries.filter((e) => e.encounterId === existing.id && (e.status === 'verified' || e.status === 'locked')).length : 0;
+  const planPreview = useMemo(() => {
+    if (!knownPatient) return [];
+    const withLevels = { ...draft, procedures: draft.procedures.filter((p) => p.level) };
+    return (ds.treatmentPlans ?? []).filter((p) => p.patientId === knownPatient.id).flatMap((p) => applyEncounterToPlan(p, withLevels).changes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [JSON.stringify(draft), knownPatient?.id, ds.treatmentPlans]);
 
   useEffect(() => {
     if (params.get('procedure')) firstProcRef.current?.scrollIntoView({ block: 'nearest' });
@@ -474,7 +492,8 @@ function VisitForm({ id }: { id?: string }) {
       if (enc.supervisorId && enc.supervisorId !== state.preferences.defaultSupervisorId) {
         await savePreferences({ ...state.preferences, defaultSupervisorId: enc.supervisorId });
       }
-      toast(res.created ? `Saved · ${res.created} logbook entr${res.created === 1 ? 'y' : 'ies'} sent for verification` : 'Saved');
+      const parts = [res.created ? `${res.created} logbook entr${res.created === 1 ? 'y' : 'ies'} sent for verification` : null, res.planChanges.length ? 'treatment plan updated' : null].filter(Boolean);
+      toast(parts.length ? `Saved · ${parts.join(' · ')}` : 'Saved');
       if (repeat) {
         // Next patient: keep date, setting, supervisor and procedure types; clear patient, teeth and levels.
         setEnc({
@@ -561,6 +580,11 @@ function VisitForm({ id }: { id?: string }) {
               ))}
             </div>
           )}
+          {knownPatient && !existing && (
+            <div className="mt-2">
+              <PatientBriefCard patientId={knownPatient.id} compact />
+            </div>
+          )}
           {knownPatient ? (
             <p className="mt-1.5 text-xs text-ink-2">
               Returning patient
@@ -568,7 +592,7 @@ function VisitForm({ id }: { id?: string }) {
               {knownPatient.sex ? ` · ${knownPatient.sex}` : ''}
               {knownPatient.systemicCondition ? ' · systemic condition recorded' : ''} ·{' '}
               <Link to={`/patients/${knownPatient.id}`} className="underline underline-offset-2">
-                case timeline
+                case timeline and plan
               </Link>
             </p>
           ) : (
@@ -739,7 +763,7 @@ function VisitForm({ id }: { id?: string }) {
         )}
       </div>
 
-      <ReviewStrip derivation={derivation} issues={issues} />
+      <ReviewStrip derivation={derivation} issues={issues} planChanges={planPreview} />
       {saveError && <ToneNote tone="critical">{saveError}</ToneNote>}
 
       <div className="sticky bottom-20 z-10 -mx-4 flex flex-wrap gap-2 border-t border-line bg-paper/95 px-4 py-3 backdrop-blur lg:bottom-0 lg:mx-0 lg:rounded-[14px] lg:border">
