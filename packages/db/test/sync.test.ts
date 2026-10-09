@@ -442,3 +442,43 @@ describe('assessment forms', () => {
     expect((await db.query('select * from public.assessment')).rows).toHaveLength(0);
   });
 });
+
+describe('internship-level forms (5.8, 5.9)', () => {
+  const internshipForm = (d: ReturnType<typeof deviceData>, over: Record<string, unknown> = {}) => ({
+    table: 'assessment',
+    op: 'upsert' as const,
+    record: {
+      id: uuidv7(),
+      internship_id: d.internship.id,
+      rotation_id: null,
+      kind: 'end_of_internship',
+      sequence: 1,
+      form_version: 'kmpdc-dental-3rd-2024',
+      responses: { e1: 'Recommended for registration' },
+      grades: {},
+      grade_remarks: {},
+      outcome: 'completed',
+      ...over,
+    },
+  });
+
+  it('stores a form without a rotation, one per internship', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    const res = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([...changesFor(d), internshipForm(d)])]);
+    expect(res.rejected).toEqual([]);
+    const dup = await rpc<PushResult>(db, 'sync_push', [JSON.stringify([internshipForm(d)])]);
+    expect(dup.rejected[0]!.reason).toMatch(/duplicate key/);
+  });
+
+  it('requires a rotation for rotation forms and none for internship forms', async () => {
+    const d = deviceData();
+    await actAs(db, ALICE);
+    await rpc(db, 'sync_push', [JSON.stringify(changesFor(d))]);
+    const bad = await rpc<PushResult>(db, 'sync_push', [
+      JSON.stringify([internshipForm(d, { kind: 'monthly' }), internshipForm(d, { kind: 'completion_verification', rotation_id: d.rotations[0]!.id })]),
+    ]);
+    expect(bad.rejected).toHaveLength(2);
+    expect(bad.rejected.every((r) => /assessment_rotation_scope/.test(r.reason))).toBe(true);
+  });
+});

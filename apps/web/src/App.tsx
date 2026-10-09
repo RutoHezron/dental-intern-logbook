@@ -27,6 +27,7 @@ const MorePage = named(() => import('./pages/More'), 'MorePage');
 const PrintLogbookPage = named(() => import('./pages/PrintLogbook'), 'PrintLogbookPage');
 const FormsPage = named(() => import('./pages/Forms'), 'FormsPage');
 const FormEditorPage = named(() => import('./pages/Forms'), 'FormEditorPage');
+const InternshipFormEditorPage = named(() => import('./pages/InternshipForms'), 'InternshipFormEditorPage');
 const SignOffPage = named(() => import('./pages/SignOff'), 'SignOffPage');
 const OnboardingPage = named(() => import('./pages/Onboarding'), 'OnboardingPage');
 
@@ -66,6 +67,7 @@ const routes: RouteObject[] = [
           { path: 'sign-off', element: <SignOffPage /> },
           { path: 'print', element: <PrintLogbookPage /> },
           { path: 'forms', element: <FormsPage /> },
+          { path: 'forms/internship/:kind', element: <InternshipFormEditorPage /> },
           { path: 'forms/:rotationId/:kind/:sequence', element: <FormEditorPage /> },
           { path: '*', element: <Navigate to="/" replace /> },
         ],

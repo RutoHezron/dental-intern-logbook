@@ -386,8 +386,9 @@ export type Grade = 0 | 1 | 2 | 3;
 export interface Assessment {
   id: ID;
   internshipId: ID;
-  rotationId: ID;
-  kind: 'monthly' | 'mid_rotation' | 'end_of_rotation' | 'overall_rotation';
+  /** Null for internship-level forms (5.8, 5.9). */
+  rotationId: ID | null;
+  kind: 'monthly' | 'mid_rotation' | 'end_of_rotation' | 'overall_rotation' | 'end_of_internship' | 'completion_verification';
   /** Month one / two for monthly assessments. */
   sequence: number;
   formVersion: string;

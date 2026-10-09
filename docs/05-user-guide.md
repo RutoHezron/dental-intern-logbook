@@ -76,6 +76,14 @@ The supervisor's PIN is stored only as a protected code on your phone. Never ask
 - A snapshot of your logbook counts is attached as evidence.
 - Use **Print view → Print** for signatures, names, registration numbers and stamps.
 
+## Finishing your internship
+
+Near the end of your last rotation, **Assessment forms** shows an **End of internship** panel at the top:
+
+- **Ready for KMPDC?** checks what is still outstanding: rotations not finished, forms not complete, rotations not yet recorded as completed, logbook minimums not met, and entries still waiting for verification.
+- **5.8 End of internship evaluation** holds the coordinator's recommendation and the Medical Superintendent's decision (recommended for registration, extension, or irredeemable).
+- **5.9 Verification of completion** fills in your rotation dates from the calendar, including extensions. Add the coordinator's remark for each rotation, then print it for signature and the hospital stamp.
+
 ## Diary
 
 Write a few lines after a memorable case, using the prompts: what was interesting, what you learned, what challenged you, what you would do differently, what to revise, and what you need more exposure to. Tag entries ⭐ important, 📚 learning, ⚠️ challenging, 🧠 revision or 🏆 milestone. Diary entries feed your reports and portfolio, and stay private unless you tick *Share with my supervisor*.

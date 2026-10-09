@@ -37,3 +37,29 @@ test('complete an end-of-rotation evaluation and a monthly assessment', async ({
   await omf.getByRole('link', { name: /month one/ }).click();
   await expect(page.getByLabel('2. Intern’s progress in achieving logbook targets')).toHaveValue(/As of 9 Nov 2025: minimum met for/);
 });
+
+test('end-of-internship paperwork: readiness checklist, 5.8 and 5.9', async ({ page }) => {
+  await page.goto('/welcome');
+  await page.getByRole('button', { name: 'Open the demo' }).click();
+  await expect(page.getByText('Patients seen')).toBeVisible();
+
+  await page.goto('/forms');
+  await page.getByRole('button', { name: /Ready for KMPDC\?/ }).click();
+  await expect(page.getByText('All rotations finished')).toBeVisible();
+  await expect(page.getByText(/Still running or upcoming: Community Dentistry/)).toBeVisible();
+
+  await page.getByRole('link', { name: /5\.9 Verification of completion/ }).click();
+  await page.getByLabel(/^Oral and Maxillofacial Surgery/).fill('Completed satisfactorily');
+  await page.getByRole('button', { name: 'Save form' }).click();
+  await expect(page.getByText('Form saved')).toBeVisible();
+  await page.getByRole('radio', { name: 'Print view' }).click();
+  const sheet = page.locator('.paper-sheet');
+  await expect(sheet.getByRole('heading', { name: '5.9. VERIFICATION OF COMPLETION OF DENTAL INTERNSHIP TRAINING' })).toBeVisible();
+  await expect(sheet.getByRole('row', { name: /Oral and Maxillofacial Surgery 13\/10\/2025 28\/12\/2025 Completed satisfactorily/ })).toBeVisible();
+  await expect(sheet.getByText('FOR OFFICIAL USE')).toBeVisible();
+
+  await page.goto('/forms/internship/end_of_internship');
+  await page.getByRole('radio', { name: /recommended for extension/ }).check();
+  await page.getByRole('button', { name: 'Save form' }).click();
+  await expect(page.getByText('State the extension period.').first()).toBeVisible();
+});

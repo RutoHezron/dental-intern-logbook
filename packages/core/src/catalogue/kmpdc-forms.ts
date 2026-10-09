@@ -8,7 +8,10 @@ import type { RotationCode } from '../types';
 
 export const FORMS_VERSION = 'kmpdc-dental-3rd-2024';
 
-export type AssessmentKind = 'monthly' | 'mid_rotation' | 'end_of_rotation' | 'overall_rotation';
+export type AssessmentKind = 'monthly' | 'mid_rotation' | 'end_of_rotation' | 'overall_rotation' | 'end_of_internship' | 'completion_verification';
+
+export type RotationFormKind = 'monthly' | 'mid_rotation' | 'end_of_rotation' | 'overall_rotation';
+export type InternshipFormKind = 'end_of_internship' | 'completion_verification';
 
 export interface FormItem {
   id: string;
@@ -151,10 +154,30 @@ export const KIND_LABELS: Record<AssessmentKind, string> = {
   mid_rotation: 'Mid-rotation assessment',
   end_of_rotation: 'End-of-rotation evaluation',
   overall_rotation: 'Overall assessment',
+  end_of_internship: 'End of internship evaluation',
+  completion_verification: 'Verification of completion',
 };
+
+/** 5.8 End of dental internship training evaluation. */
+export const END_OF_INTERNSHIP_SECTIONS: FormSection[] = [
+  { id: 'coordinator', title: 'Assessment and recommendation by Dental Internship Coordinator', items: [{ id: 'e1', label: 'Assessment and recommendation' }] },
+  { id: 'supervisor', title: 'Assessment and recommendation by Medical Superintendent / Medical Director', items: [{ id: 'e2', label: 'Remarks (optional)' }] },
+];
+
+export const INTERNSHIP_OUTCOME_LABELS = {
+  completed:
+    'The Intern has successfully completed Dental Internship Training and is recommended for registration by the Council as a Dental Practitioner.',
+  extend: 'The Intern has not completed Dental Internship Training and is recommended for extension by a period of',
+  irredeemable: 'The Intern\u2019s performance is deemed irredeemable, and he/she is referred back to Council for further action.',
+} as const;
+
+/** 5.9: the coordinator's remark for each rotation is stored under this response id. */
+export const completionRemarkId = (rotation: RotationCode) => `v${rotation.toLowerCase()}`;
 
 /** Paper-book sub-section number for a form within a rotation section (e.g. 5.3 → 5.3.6.1). */
 export function formSectionNumber(rotationSection: string, kind: AssessmentKind, rotation: RotationCode): string {
+  if (kind === 'end_of_internship') return '5.8';
+  if (kind === 'completion_verification') return '5.9';
   const evalNo = rotation === 'COMM' ? '7' : '6';
   const overallNo = rotation === 'COMM' ? '8' : '7';
   switch (kind) {

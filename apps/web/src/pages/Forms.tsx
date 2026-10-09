@@ -31,6 +31,7 @@ import { db } from '../data/db';
 import { newId, RepoError, saveAssessment } from '../data/repo';
 import { fmtDate, rotationName } from '../lib/format';
 import { analyticsDate, useInternship } from '../state/AppData';
+import { CompletionPanel } from './InternshipForms';
 
 const SECTIONS_FOR: Partial<Record<AssessmentKind, FormSection[]>> = {
   monthly: MONTHLY_SECTIONS,
@@ -49,6 +50,8 @@ export function FormsPage() {
   const asOf = analyticsDate(today, ix);
   const assessments = useLiveQuery(() => db.assessments.toArray(), []) ?? [];
   const find = (r: Rotation, kind: AssessmentKind, seq: number) => assessments.find((a) => a.rotationId === r.id && a.kind === kind && a.sequence === seq && !a.deletedAt);
+  // Once the last rotation has started, the completion paperwork moves to the top.
+  const nearEnd = [...ds.rotations].sort((x, y) => x.startsOn.localeCompare(y.startsOn)).at(-1)!.startsOn <= asOf;
   const ordered = [...ds.rotations].sort((a, b) => {
     const cur = (r: Rotation) => (r.startsOn <= asOf && rotationEnd(r) >= asOf ? 0 : r.startsOn > asOf ? 1 : 2);
     return cur(a) - cur(b) || a.startsOn.localeCompare(b.startsOn);
@@ -60,6 +63,7 @@ export function FormsPage() {
         The KMPDC monthly, mid-rotation, end-of-rotation and overall forms, with your details and logbook progress filled in. Complete them at the meeting, then
         print for signatures and stamps.
       </PageHeader>
+      {nearEnd && <CompletionPanel />}
       {ordered.map((r) => (
         <section key={r.id} className="card overflow-hidden">
           <h2 className="flex items-center gap-2 border-b border-line px-4 py-3 text-[17px] font-semibold">
@@ -98,6 +102,7 @@ export function FormsPage() {
           </ul>
         </section>
       ))}
+      {!nearEnd && <CompletionPanel />}
     </div>
   );
 }
