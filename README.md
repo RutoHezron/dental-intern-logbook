@@ -26,6 +26,7 @@ An intern logs a visit in under a minute: patient number, teeth, procedure, thei
 | **Rotations** | Calendar with extensions; entries move to the matching rotation automatically. Supervisors and objectives. |
 | **Phone storage** | On-device database set up at first launch, with persistent storage requested and shown (location, size, kept permanently). Native app: automatic daily backups to `Documents/DentalLogbook`, last 7 kept, restorable. Browser: share-sheet backups and a weekly reminder. |
 | **Supervisor sign-off** | On the intern's phone and offline: the supervisor reviews pending entries with prompts (late, duplicate, paediatric age, first jump to a high level…), verifies, adjusts the level or returns with a comment, and signs with their own PIN. Each decision becomes a hash-chained verification. |
+| **Supervisors on their own phone** | The intern invites a supervisor with a one-time code, shown as a link and a QR code to scan chairside. The supervisor signs in on their own phone or computer, sees only what was submitted to them (with the visit's procedures and diagnosis), and verifies, adjusts the level or returns with a comment. Their sign-offs form their own hash chain, ordered by the server so two devices can never fork it, and reach the intern's phone at the next sync. |
 | **Printed KMPDC pages** | The case and procedure log (5.x.4), case-report log, and community logs (5.7.4–5.7.6) in the book's layout. Rows are filled from verified entries in date order at the supervisor's observed level, padded to the book's row count, with continuation sheets, a digital verification reference per row and an integrity code per table — ready for the wet signature and stamp. |
 | **Assessment forms** | Monthly, mid-rotation, end-of-rotation (graded 0–3, with reasons required for 0 or 1) and overall assessments for every rotation. Identity and dates are pre-filled, the supervisor's progress remark can be drafted from the logbook, a progress snapshot is attached as evidence, due dates and status are tracked, and forms print in the book's layout. |
 | **Case reports** | Ten per rotation, as the logbook expects. Started from a patient's visits, the facts (age and sex, complaint, findings, investigations, diagnosis, procedures with dates and levels, referral) are drafted without copying the hospital number; the intern writes the discussion. Verified with the same PIN sign-off and hash chain as logbook entries, locked once verified, and filling the printed *Log of Case Reports*. |
@@ -68,15 +69,15 @@ Open http://localhost:5173 and choose **Open the demo** (Dr Alex Mwangi, a ficti
 npm test
 ```
 
-This runs 188 unit and integration tests across three packages:
+This runs 206 unit and integration tests across three packages:
 
 | Package | Tests | Covers |
 |---|---|---|
-| `@logbook/core` | 128 | Catalogue integrity (42 codes / 762 minimums), the blueprint's worked mapping examples, counting rules, reconciliation, hash chain, validation and the identifier guard, periods, compounding (weekly and monthly sums equal the cumulative total), reports, snapshots, portfolio wording, treatment plan updates and handover lists, deterministic synthetic data |
-| `@logbook/db` | 32 | Real migrations in PGlite: no identity columns on patients, push/pull round trip, cursors, tombstones, per-change rejection, row-level isolation, ownership pinning, verified-entry guard, append-only verifications, audit trail |
-| `@logbook/web` | 28 | Repository against IndexedDB (including PIN sign-off and its hash chain), on-phone storage and backup reminders, Quick Entry UI flow, and the sync engine end to end (device ↔ Postgres, second-device restore, sign-off synced, edits to verified entries refused, local-edit protection) |
+| `@logbook/core` | 133 | Catalogue integrity (42 codes / 762 minimums), the blueprint's worked mapping examples, counting rules, reconciliation, hash chain, validation and the identifier guard, periods, compounding (weekly and monthly sums equal the cumulative total), reports, snapshots, portfolio wording, treatment plan updates and handover lists, account sign-off chains, timestamp round trips, deterministic synthetic data |
+| `@logbook/db` | 43 | Real migrations in PGlite: no identity columns on patients, push/pull round trip, cursors, tombstones, per-change rejection, row-level isolation, ownership pinning, verified-entry guard, append-only verifications, audit trail, supervisor invites and linking, what a supervisor can read, account sign-off with chain-head checks |
+| `@logbook/web` | 30 | Repository against IndexedDB (including PIN sign-off and its hash chain), on-phone storage and backup reminders, Quick Entry UI flow, and the sync engine end to end (device ↔ Postgres, second-device restore, sign-off synced, edits to verified entries refused, local-edit protection, PIN kept across syncs), and the supervisor-account journey (invite, accept, sign, intern pulls) |
 
-The end-to-end browser tests (22) run against the production build with the service worker, using the locally installed Chrome:
+The end-to-end browser tests (24) run against the production build with the service worker, using the locally installed Chrome:
 
 ```bash
 npm run test:e2e -w @logbook/web
@@ -136,6 +137,6 @@ The debug APK is written to `apps/mobile/android/app/build/outputs/apk/debug/app
 
 ## Status
 
-The MVP (M1–M4) is complete, with phone-first storage and the Android app shell. V1 so far adds supervisor sign-off on the phone, printed KMPDC logbook pages, the rotation assessment forms, the end-of-internship and completion forms (5.8, 5.9) with a readiness checklist, case reports, and treatment plans with next-visit briefs and rotation handover. Still to come in V1: server-side supervisor accounts, so supervisors sign from their own phones. See [docs/01-architecture.md § Roadmap](docs/01-architecture.md#roadmap).
+The MVP (M1–M4) is complete, with phone-first storage and the Android app shell. V1 so far adds supervisor sign-off on the phone, printed KMPDC logbook pages, the rotation assessment forms, the end-of-internship and completion forms (5.8, 5.9) with a readiness checklist, case reports, treatment plans with next-visit briefs and rotation handover, and supervisor accounts (supervisors verify from their own phone, invited by code or QR). Still to come for the web app: the coordinator cohort view, web push reminders, then the AI gateway (V3), institutional mode (V4) and other professions (V5). See [docs/01-architecture.md § Roadmap](docs/01-architecture.md#roadmap).
 
 Counting rules R1–R10 are **defaults** until a training centre confirms them (KMPDC does not define them), and the app labels them that way. Procedure counts show recorded exposure; the app does not certify competence.

@@ -107,6 +107,17 @@ function convertKeys(value: unknown, fn: (k: string) => string, dropNulls: boole
   return out;
 }
 
+/**
+ * A pulled row replaces the device record, except device-only fields (a
+ * supervisor's PIN hash), which the server never has and must survive a sync.
+ */
+export function mergePulled<T extends object>(local: object | undefined, incoming: T): T {
+  if (!local) return incoming;
+  const kept: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(local)) if (DEVICE_ONLY.has(k)) kept[k] = v;
+  return { ...kept, ...incoming };
+}
+
 /** Device record → server row (snake_case, nested arrays kept for the push function). */
 export function toWire(record: object): Record<string, unknown> {
   const clean: Record<string, unknown> = {};

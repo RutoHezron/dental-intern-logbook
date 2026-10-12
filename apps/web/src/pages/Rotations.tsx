@@ -2,6 +2,7 @@ import { addDays, checkRotationCalendar, computeStats, daysBetween, requirementP
 import { Plus, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { PageHeader, ProgressBar, Section, ToneNote, useToast } from '../components/ui';
+import { SupervisorInvite } from '../components/SupervisorInvite';
 import { newId, RepoError, saveRotations, saveSupervisor } from '../data/repo';
 import { fmtDate, ROTATION_VAR, rotationName } from '../lib/format';
 import { analyticsDate, useInternship } from '../state/AppData';
@@ -130,7 +131,7 @@ export function RotationsPage() {
 }
 
 function Supervisors() {
-  const { ix, ds } = useInternship();
+  const { ix, ds, state } = useInternship();
   const toast = useToast();
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
@@ -139,13 +140,14 @@ function Supervisors() {
     <Section title="Supervisors">
       <ul className="mb-4 divide-y divide-line">
         {ds.supervisors.map((s) => (
-          <li key={s.id} className="flex items-center gap-3 py-2 text-sm">
+          <li key={s.id} className="flex flex-wrap items-center gap-3 py-2 text-sm">
             <UserRound size={16} className="text-ink-3" aria-hidden="true" />
             <span className="flex-1">
               {s.name}
               {s.role && <span className="text-ink-3"> · {s.role}</span>}
             </span>
             {s.rotation && <span className="code text-xs text-ink-2">{s.rotation}</span>}
+            <SupervisorInvite supervisor={s} demo={Boolean(state.demo)} />
           </li>
         ))}
         {ds.supervisors.length === 0 && <li className="py-2 text-sm text-ink-2">No supervisors yet.</li>}

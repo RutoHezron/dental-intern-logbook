@@ -62,6 +62,16 @@ Optional details live under *Diagnosis, investigations, referral and notes*. OMF
 
 The supervisor's PIN is stored only as a protected code on your phone. Never ask for it or record it.
 
+### Your supervisor's own phone
+
+If your logbook is signed in (Settings → Account & sync), a supervisor can verify from their own phone or computer instead:
+
+1. Open **Rotations & supervisors** and tap **Invite** beside their name.
+2. They scan the QR code with their camera (or you send them the link), sign in with their email and accept. The code works once and expires after seven days.
+3. From then on, everything you submit to them appears in their list, wherever they are. Their decisions reach your phone at your next sync.
+
+They see only what you submitted to them: the code, date, patient number, tooth, level and the visit's procedures and diagnosis — nothing else in your logbook. **Disconnect** removes their access at any time. Supervisors cannot sign in on a phone that holds an intern's logbook; on your phone they use the PIN sign-off above.
+
 ## Case reports
 
 The logbook expects ten case reports per rotation. **Case reports** shows how many are verified in each rotation.

@@ -1,5 +1,6 @@
 import { CloudCheck, LogOut, RefreshCw } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
+import { EmailSignIn } from '../components/EmailSignIn';
 import { Section, ToneNote, useToast } from '../components/ui';
 import { useInternship } from '../state/AppData';
 import { useSync } from '../sync/SyncProvider';
@@ -9,9 +10,6 @@ export function AccountSync() {
   const sync = useSync();
   const { state } = useInternship();
   const toast = useToast();
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [step, setStep] = useState<'email' | 'code'>('email');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,59 +91,10 @@ export function AccountSync() {
     );
   }
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (step === 'email') {
-      run(async () => {
-        await sync.sendCode(email);
-        setStep('code');
-      });
-    } else {
-      run(async () => {
-        await sync.verifyCode(email, code);
-        toast('Signed in · syncing your logbook');
-      });
-    }
-  };
-
   return (
     <Section title="Account & sync">
       <p className="mb-3 text-sm text-ink-2">Sign in to back up your logbook and use it on more than one device. We email you a 6-digit code — no password.</p>
-      <form className="flex flex-wrap items-end gap-2" onSubmit={submit}>
-        {step === 'email' ? (
-          <div className="min-w-60 flex-1">
-            <label className="label" htmlFor="sync-email">Email</label>
-            <input id="sync-email" type="email" autoComplete="email" required className="field" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-        ) : (
-          <div className="min-w-40 flex-1">
-            <label className="label" htmlFor="sync-code">Code sent to {email}</label>
-            <input
-              id="sync-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              required
-              className="field code tabular tracking-[0.3em]"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-            />
-          </div>
-        )}
-        <button type="submit" className="btn btn-primary" disabled={busy || (step === 'email' ? !email.includes('@') : code.length < 6)}>
-          {busy ? 'Please wait…' : step === 'email' ? 'Email me a code' : 'Sign in'}
-        </button>
-        {step === 'code' && (
-          <button type="button" className="btn btn-ghost" onClick={() => setStep('email')}>
-            Use a different email
-          </button>
-        )}
-      </form>
-      {error && (
-        <div className="mt-3">
-          <ToneNote tone="critical">{error}</ToneNote>
-        </div>
-      )}
+      <EmailSignIn onSignedIn={() => toast('Signed in · syncing your logbook')} />
     </Section>
   );
 }

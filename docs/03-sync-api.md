@@ -64,9 +64,21 @@ interface PullResult {
 }
 ```
 
-- Returns every row of the caller's with `server_seq > since`, including soft-deleted rows, in cursor order.
+- Returns every row **owned by the caller** with `server_seq > since`, including soft-deleted rows, in cursor order. The owner filter is explicit (not only row-level security), so a supervisor who also keeps a logbook never pulls their interns' rows into it.
 - Encounters include their child arrays.
 - `since = 0` returns everything; the app does this after sign-in to restore a logbook on a new device.
+
+## Supervisor accounts
+
+| Function | Caller | Does |
+|---|---|---|
+| `create_supervisor_invite(p_supervisor)` | Intern | Returns a one-time code `XXXX-XXXX-XXXX` (60 bits, single use, 7 days) for one of their supervisor records. A new invite cancels an unused one. |
+| `accept_supervisor_invite(p_code)` | Supervisor | Links the supervisor record to the caller's account. Refuses expired, used and self-invites. Only this function (and `unlink_supervisor_account`) can set `supervisor.user_id`; a device push never changes it. |
+| `unlink_supervisor_account(p_supervisor)` | Intern | Removes the supervisor's access. |
+| `supervisor_queue()` | Supervisor | Links (intern, the name the supervisor is listed under, chain tip) and the entries and case reports awaiting them, with visit context. Read through row-level security policies that expose only items submitted to that supervisor. |
+| `supervisor_sign(p_records)` | Supervisor | Appends `method = 'account'` verifications. Each must target an item submitted to that supervisor and still awaiting verification, and must extend the head of that supervisor's chain (checked under an advisory lock). A stale head fails with `chain_moved`; the client reloads and rebuilds once. All-or-nothing per call. |
+
+The supervisor's device builds and hashes the records with the same code the intern's phone uses (`buildAccountSignatures` in `@logbook/core`); the intern's device checks every chain when it pulls them.
 
 ## Client engine
 

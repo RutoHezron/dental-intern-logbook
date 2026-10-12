@@ -1,7 +1,8 @@
 import { addDays, displayDate, KMPDC_DENTAL_3, startOfIsoWeek, todayISO, weekday, type RotationCode } from '@logbook/core';
 import { ArrowDown, ArrowUp, CheckCircle2, ShieldCheck, Smartphone } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router';
+import { Link, Navigate } from 'react-router';
+import { syncConfigured } from '../sync/supabase';
 import { LevelLadder, ToneNote } from '../components/ui';
 import { loadDemo, RepoError, setupInternship } from '../data/repo';
 import { ROTATION_VAR } from '../lib/format';
@@ -168,6 +169,14 @@ export function OnboardingPage() {
               {busy === 'setup' ? 'Creating…' : 'Create my logbook'}
             </button>
           </form>
+          {syncConfigured && (
+            <p className="text-center text-sm text-ink-2">
+              Supervising interns?{' '}
+              <Link to="/supervise" className="font-medium text-ink underline underline-offset-2">
+                Review entries submitted to you
+              </Link>
+            </p>
+          )}
         </section>
       </div>
     </div>

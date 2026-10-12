@@ -7,6 +7,12 @@ Postgres via Supabase. The migrations are in `supabase/migrations/` and are test
 | `20261008000100_core_schema.sql` | Tables, constraints, indexes, triggers |
 | `20261008000200_rls.sql` | Row-level security policies and grants |
 | `20261008000300_sync.sql` | `sync_push`, `sync_pull` and the upsert helper |
+| `20261008000400_phone_signoff.sql` | PIN sign-off from the intern's phone; the server owns verified/returned status |
+| `20261008000500_assessments.sql` | KMPDC rotation assessment forms |
+| `20261008000600_internship_forms.sql` | End-of-internship (5.8) and completion (5.9) forms |
+| `20261008000700_case_reports.sql` | Case reports; verifications target an entry or a case report |
+| `20261008000800_treatment_plans.sql` | Treatment plans; sync reads its table list from the `sync_table` registry |
+| `20261012000900_supervisor_accounts.sql` | Invites, supervisor read access, `supervisor_queue`, `supervisor_sign`, owner-filtered pull |
 
 ## Personal mode
 
@@ -29,6 +35,7 @@ In the MVP every row belongs to one intern (`owner_id = auth.uid()`). The facili
 | `verification` | Supervisor decision on a logbook entry **or** a case report (exactly one) | **Append-only**; a returned decision requires a comment; sets the target's status |
 | `case_report` | Case report (5.x.5): title, date, linked visits, sections (JSON) | Status set only by verifications; content locked once verified |
 | `treatment_plan` | Per-patient plan with items (JSON): phase, treatment, teeth, status, stage, handover note | Owner-only; synced through the `sync_table` registry |
+| `supervisor_invite` | One-time code linking a supervisor record to the supervisor's account | Only the SHA-256 of the code is stored; single use, 7-day expiry |
 | `assessment` | Rotation forms and internship forms (5.8, 5.9) | One live form per slot; grades and answers as JSON keyed by form item |
 | `reflection` | Reflection diary | |
 | `report_snapshot` | Finalised report | SHA-256 checked as 64 hex characters |

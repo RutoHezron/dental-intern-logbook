@@ -129,6 +129,10 @@ describe('sync engine ↔ Postgres', () => {
     expect(Object.fromEntries(rows.rows.map((r) => [r.id, r.status]))).toEqual({ [first!.id]: 'verified', [second!.id]: 'returned' });
     expect((await pg.query('select * from public.verification')).rows).toHaveLength(2);
 
+    // The pull brings the supervisor row back; the PIN (device-only) survives it.
+    await syncOnce(transport);
+    expect((await db.supervisors.get(supervisorId))!.pinHash).toMatch(/^[0-9a-f]{64}$/);
+
     // Tamper on the device: change the level of the verified entry.
     const verified = (await db.entries.get(first!.id))!;
     await db.entries.put({ ...verified, levelClaimed: 5 });

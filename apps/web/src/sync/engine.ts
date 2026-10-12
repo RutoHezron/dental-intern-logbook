@@ -2,6 +2,7 @@ import {
   CLIENT_TABLE,
   CLIENT_WRITABLE,
   fromWire,
+  mergePulled,
   PUSH_ORDER,
   SERVER_TABLE,
   toWire,
@@ -110,7 +111,7 @@ export async function syncOnce(transport: SyncTransport): Promise<SyncOutcome> {
       for (const row of rows) {
         const rec = fromWire<{ id: string }>(row);
         if (waiting.has(key(table, rec.id))) continue;
-        await db.table(table).put(rec);
+        await db.table(table).put(mergePulled(await db.table(table).get(rec.id), rec));
         outcome.pulled++;
       }
     }

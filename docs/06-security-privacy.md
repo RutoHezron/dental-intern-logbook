@@ -24,8 +24,8 @@ How this is enforced:
 | Area | MVP control | Planned |
 |---|---|---|
 | Authentication | Email one-time code (no passwords); sessions refresh automatically | Passkeys for supervisors; MFA for coordinators and admins; device PIN/biometric lock (V2) |
-| Authorisation | Postgres RLS, forced, on every table; intern-owned rows only; ownership pinned server-side; no anonymous access | Supervisor and coordinator policies (V1) |
-| Integrity | Server guard: devices cannot mark entries verified; verified entries cannot change; append-only, hash-chained verifications; finalised reports sealed with SHA-256 | `verify_entry()` with signer identity (V1) |
+| Authorisation | Postgres RLS, forced, on every table; ownership pinned server-side; no anonymous access. A linked supervisor can **read** only entries and case reports submitted to them, with that visit's procedures and diagnoses, the intern's name and rotations — not patients' birth year or sex, other entries, the diary, reports or other supervisors' items — and cannot write any intern row | Coordinator policies |
+| Integrity | Server guard: devices cannot mark entries verified; verified entries cannot change; append-only, hash-chained verifications (one chain on the phone, one per supervisor account, so they cannot fork each other); account sign-offs only through `supervisor_sign`, which checks the target, the signer and the chain head; finalised reports sealed with SHA-256 | Server-side re-computation of account hashes |
 | Audit | `audit_log` records actor, action, table and row ID — never content; append-only | Exports and prints logged (V1) |
 | Transport | HTTPS only | |
 | Storage at rest | Server: provider disk encryption plus encrypted backups. Device: browser storage protected by the device's own encryption | Encrypted SQLite with a keystore-held key in the native app (V2) |
@@ -33,6 +33,7 @@ How this is enforced:
 | Logging | No clinical content in logs; sync payloads must not be logged (see deployment) | |
 | Export and deletion | Full JSON backup; CSV exports (formula-injection safe); "Delete all data on this device" | Server-side account deletion with export (V1) |
 | Phone storage | Data in app-private storage (native) or persistent browser storage. Android cloud backup and device-to-device transfer are **disabled** (`allowBackup=false`, data-extraction rules), so records never leave the phone without the intern choosing to. Intern-controlled backups go to `Documents/DentalLogbook`. | Optional passphrase-encrypted backups (V2) |
+| Supervisor accounts | Invite codes are 60-bit, single use and expire in 7 days; only their SHA-256 is stored; the link can be set only by accepting a code and removed by the intern at any time. Supervisor sign-in is blocked on a device that holds an intern's logbook, so a logbook cannot start syncing into a supervisor's account | Passkeys for supervisors |
 | Supervisor sign-off on the phone | Supervisor PIN stored only as a salted PBKDF2-SHA-256 hash (210k iterations) on the device, never synced; guessable PINs refused; each decision is an append-only, hash-chained verification; the server accepts PIN sign-offs only for the intern's own entries. **Limitation:** a PIN on the intern's own phone is weaker than a supervisor's own account, so this mirrors the paper book's trust model. | Supervisor accounts with passkeys and the chairside QR flow |
 | Device loss | No identifiers stored; sign out from Settings | Remote session revocation and auto-lock (V2) |
 

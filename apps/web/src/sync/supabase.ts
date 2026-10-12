@@ -38,3 +38,11 @@ export const supabaseTransport: SyncTransport = {
     return data as PullResult;
   },
 };
+
+/** Call a server function as the signed-in user. */
+export async function supabaseRpc(fn: string, args: Record<string, unknown>): Promise<unknown> {
+  const sb = await getSupabase();
+  const { data, error } = await sb.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data;
+}

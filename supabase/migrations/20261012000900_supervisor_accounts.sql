@@ -246,7 +246,7 @@ begin
                 'visit', (select jsonb_strip_nulls(jsonb_build_object(
                            'time', x.time, 'visit_type', x.visit_type, 'setting', x.setting,
                            'procedures', (select coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
-                                             'procedure_type_id', p.procedure_type_id, 'sites', p.sites, 'stage', p.stage, 'level', p.level, 'other_name', p.other_name)) order by p.ord), '[]'::jsonb)
+                                             'id', p.id, 'procedure_type_id', p.procedure_type_id, 'sites', p.sites, 'stage', p.stage, 'level', p.level, 'other_name', p.other_name)) order by p.ord), '[]'::jsonb)
                                           from public.encounter_procedure p where p.encounter_id = x.id),
                            'diagnoses', (select coalesce(jsonb_agg(f.term || coalesce(' (' || f.site || ')', '') order by f.ord), '[]'::jsonb)
                                           from public.finding f where f.encounter_id = x.id and f.is_diagnosis)))

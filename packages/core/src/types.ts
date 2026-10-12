@@ -198,6 +198,7 @@ export interface Supervisor {
    * the server; the device can never link or change it.
    */
   userId?: ID | null;
+  linkedAt?: ISODateTime | null;
 }
 
 export interface Internship {

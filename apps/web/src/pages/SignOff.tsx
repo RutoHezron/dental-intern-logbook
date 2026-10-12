@@ -24,7 +24,7 @@ import { useInternship } from '../state/AppData';
  * a different level, or return with a comment) and signs with their own PIN.
  */
 
-type Draft = Record<string, { decision: 'verified' | 'returned'; level?: Level; comment?: string }>;
+export type Draft = Record<string, { decision: 'verified' | 'returned'; level?: Level; comment?: string }>;
 
 export function SignOffPage() {
   const { ix, ds } = useInternship();
@@ -285,7 +285,7 @@ function Review({ supervisorId, onExit }: { supervisorId: string; onExit: () => 
   );
 }
 
-function EntryReview({
+export function EntryReview({
   entry,
   summary,
   checks,
@@ -378,7 +378,7 @@ function EntryReview({
   );
 }
 
-function CaseReportReview({ report, value, onChange }: { report: CaseReport; value: Draft[string] | undefined; onChange: (v: Draft[string] | null) => void }) {
+export function CaseReportReview({ report, value, onChange }: { report: CaseReport; value: Draft[string] | undefined; onChange: (v: Draft[string] | null) => void }) {
   const decision = value?.decision;
   return (
     <li className="card p-4" style={decision ? { borderColor: decision === 'verified' ? 'var(--good)' : 'var(--critical)' } : undefined}>
