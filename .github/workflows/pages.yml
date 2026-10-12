@@ -43,11 +43,8 @@ jobs:
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
           # Sync server (optional): set these as repository variables (Settings → Variables).
-          VITE_FIREBASE_API_KEY: ${{ vars.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ vars.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_APP_ID: ${{ vars.VITE_FIREBASE_APP_ID }}
-          VITE_FIREBASE_REGION: ${{ vars.VITE_FIREBASE_REGION }}
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_VAPID_PUBLIC_KEY: ${{ vars.VITE_VAPID_PUBLIC_KEY }}
       # GitHub Pages serves 404.html for unknown paths: let the app's router handle deep links.
       - run: cp apps/web/dist/index.html apps/web/dist/404.html
