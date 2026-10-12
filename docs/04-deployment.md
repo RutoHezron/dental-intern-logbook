@@ -68,6 +68,17 @@ You can use Supabase Cloud or self-host it. Self-hosting suits a Kenyan data cen
    - turn off anonymous sign-ins.
 4. Copy the API URL and anon key into the web app's build configuration and rebuild.
 5. Check that RLS is enabled on every public table (Dashboard → Advisors → Security). The migrations force RLS.
+6. Add the first administrator (SQL editor). They manage supervisors and further administrators at `/admin`:
+
+   ```sql
+   insert into public.app_admin (email) values ('coordinator@hospital.org');
+   ```
+
+### Administrator: supervisors and interns
+
+At `/admin` an administrator registers supervisors by email and links each one to their interns, without invite codes. Interns appear once they have signed in and synced. Linking either attaches the registered supervisor to a supervisor already in the intern's logbook (suggested when the names match, so entries already submitted to it reach them) or adds a new supervisor to the intern's logbook, which arrives on their phone at the next sync. A supervisor who has not signed in yet is linked the first time they sign in with that email.
+
+The administrator sees interns' names, emails, licence numbers and supervisor names, never entries, patients or visits. A linked supervisor sees, at `/supervise`, the requests waiting for their sign-off and an activity feed of what each intern submitted to them (statuses and decisions, never drafts or patient numbers in the feed). Interns see who is linked and can disconnect a supervisor.
 
 ### Local development stack
 

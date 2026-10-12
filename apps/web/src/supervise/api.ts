@@ -119,3 +119,20 @@ export function formatInviteCode(raw: string): string {
 export function inviteLink(appBase: string, code: string): string {
   return `${appBase}join?code=${encodeURIComponent(code)}`;
 }
+
+export interface ActivityEntry extends QueueEntry {
+  decision?: { decision: 'verified' | 'returned'; levelObserved?: Level; comment?: string; signedAt: string };
+}
+
+export interface InternActivity {
+  supervisorId: ID;
+  summary: { total: number; submitted: number; returned: number; verified: number; last7Days: number; lastOn?: string };
+  /** The latest 60 entries the intern submitted to this supervisor (never drafts). */
+  entries: ActivityEntry[];
+  caseReports: { id: ID; title: string; date: string; status: CaseReport['status'] }[];
+}
+
+/** What each linked intern has submitted to the signed-in supervisor, newest first, with each item's status. */
+export async function loadActivity(rpc: Rpc): Promise<InternActivity[]> {
+  return ((await rpc('supervisor_activity', {})) as Record<string, unknown>[]).map((r) => fromWire<InternActivity>(r));
+}

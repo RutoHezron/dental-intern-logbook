@@ -31,6 +31,8 @@ await db.exec(`
   grant execute on function auth.uid() to anon, authenticated;
 `);
 for (const f of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) await db.exec(readFileSync(join(MIGRATIONS, f), 'utf8'));
+// The first administrator is added with SQL in a real project (docs/04-deployment.md).
+await db.exec(`insert into public.app_admin (email) values ('admin@test.example')`);
 
 // PGlite has one connection: run requests one at a time.
 let chain = Promise.resolve();

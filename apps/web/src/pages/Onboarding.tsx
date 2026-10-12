@@ -180,6 +180,11 @@ export function OnboardingPage() {
               <Link to="/cohort" className="font-medium text-ink underline underline-offset-2">
                 See your cohort
               </Link>
+              <br />
+              Training centre administrator?{' '}
+              <Link to="/admin" className="font-medium text-ink underline underline-offset-2">
+                Link supervisors to interns
+              </Link>
             </p>
           )}
         </section>

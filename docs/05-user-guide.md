@@ -70,6 +70,8 @@ If your logbook is signed in (Settings → Account & sync), a supervisor can ver
 2. They scan the QR code with their camera (or you send them the link), sign in with their email and accept. The code works once and expires after seven days.
 3. From then on, everything you submit to them appears in their list, wherever they are. Their decisions reach your phone at your next sync.
 
+Your training centre's administrator can also link a supervisor to you directly. The supervisor then appears under **Rotations & supervisors** after your next sync, marked **Signs from own phone**.
+
 They see only what you submitted to them: the code, date, patient number, tooth, level and the visit's procedures and diagnosis — nothing else in your logbook. **Disconnect** removes their access at any time. Supervisors cannot sign in on a phone that holds an intern's logbook; on your phone they use the PIN sign-off above.
 
 ## Case reports

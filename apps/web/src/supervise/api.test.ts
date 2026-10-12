@@ -6,7 +6,8 @@ import { actAs, asAdmin, createDb, createUser, rpc as pgRpc } from '../../../../
 import { db } from '../data/db';
 import { clearAll, loadState, newId, saveEncounter, setupInternship } from '../data/repo';
 import { syncOnce, type SyncTransport } from '../sync/engine';
-import { acceptInvite, createInvite, formatInviteCode, loadQueue, signDecisions, type Rpc } from './api';
+import { isAdmin, linkSupervisor, loadOverview, registerSupervisor, suggestRecord } from '../admin/api';
+import { acceptInvite, createInvite, formatInviteCode, loadActivity, loadQueue, signDecisions, type Rpc } from './api';
 
 /**
  * The whole supervisor-account journey: the intern's device (IndexedDB) syncs
@@ -17,6 +18,7 @@ import { acceptInvite, createInvite, formatInviteCode, loadQueue, signDecisions,
 
 const INTERN = '0190a000-0000-7000-8000-0000000017e2';
 const SUPERVISOR = '0190a000-0000-7000-8000-0000000005a9';
+const ADMIN = '0190a000-0000-7000-8000-00000000ad01';
 
 let pg: PGlite;
 
@@ -45,13 +47,16 @@ const rpcAs =
 beforeAll(async () => {
   pg = await createDb();
   await createUser(pg, INTERN);
-  await createUser(pg, SUPERVISOR);
+  await createUser(pg, SUPERVISOR, 'own.phone@hospital.org');
+  await createUser(pg, ADMIN, 'admin@hospital.org');
+  await asAdmin(pg);
+  await pg.query(`insert into public.app_admin (email) values ('admin@hospital.org')`);
 }, 60_000);
 
 beforeEach(async () => {
   await asAdmin(pg);
   await pg.exec(`truncate public.supervisor_invite, public.verification, public.logbook_entry, public.activity, public.encounter, public.patient,
-                 public.rotation, public.supervisor, public.internship, public.facility cascade`);
+                 public.rotation, public.supervisor, public.supervisor_account, public.internship, public.facility cascade`);
   await clearAll();
 });
 
@@ -137,5 +142,35 @@ describe('supervisor on their own account', () => {
     const ds = (await loadState()).dataset!;
     expect(ds.entries.every((e) => e.status === 'verified')).toBe(true);
     expect(checkVerificationChain(ds.verifications, new Map(ds.entries.map((e) => [e.id, e])))).toEqual([]);
+  });
+
+  it("an administrator links the supervisor directly: requests, activity, and the link on the intern's phone", async () => {
+    const supervisorId = await internLogsAVisit();
+    const admin = rpcAs(ADMIN);
+    expect(await isAdmin(admin)).toBe(true);
+    expect(await isAdmin(rpcAs(INTERN))).toBe(false);
+
+    const { id } = await registerSupervisor(admin, { email: 'own.phone@hospital.org', name: 'Dr Own Phone', role: 'Consultant' });
+    const o = await loadOverview(admin);
+    const intern = o.interns[0]!;
+    // The intern's own record for this person is suggested, so earlier submissions reach them.
+    expect(suggestRecord(intern, o.supervisors[0]!)?.id).toBe(supervisorId);
+    expect(await linkSupervisor(admin, id, intern.ownerId, supervisorId)).toEqual({ supervisorId, linked: true });
+
+    const sup = rpcAs(SUPERVISOR);
+    const q = await loadQueue(sup);
+    expect(q.entries).toHaveLength(2);
+    const [activity] = await loadActivity(sup);
+    expect(activity!.summary).toMatchObject({ total: 2, submitted: 2, returned: 0, verified: 0, lastOn: '2025-11-03' });
+    expect(activity!.entries[0]!.visit?.procedures.length).toBe(2);
+
+    await signDecisions(sup, q.links[0]!, q, [{ entryId: q.entries[0]!.id, decision: 'verified', levelObserved: 3 }]);
+    const [after] = await loadActivity(sup);
+    expect(after!.summary).toMatchObject({ submitted: 1, verified: 1 });
+    expect(after!.entries.find((e) => e.id === q.entries[0]!.id)?.decision).toMatchObject({ decision: 'verified', levelObserved: 3 });
+
+    // The intern's phone learns who is linked at the next sync.
+    await syncOnce(transport);
+    expect((await db.supervisors.get(supervisorId))?.userId).toBe(SUPERVISOR);
   });
 });

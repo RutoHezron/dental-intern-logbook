@@ -4,10 +4,22 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNo
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { EmailSignIn } from '../components/EmailSignIn';
 import { PushReminders } from '../components/PushReminders';
-import { PageHeader, ToneNote, useToast } from '../components/ui';
+import { PageHeader, Segmented, ToneNote, useToast } from '../components/ui';
 import { fmtDate } from '../lib/format';
 import { useAppData } from '../state/AppData';
-import { acceptInvite, formatInviteCode, loadQueue, signDecisions, type Decision, type QueueEntry, type SupervisionLink, type SupervisorQueue } from '../supervise/api';
+import {
+  acceptInvite,
+  formatInviteCode,
+  loadActivity,
+  loadQueue,
+  signDecisions,
+  type ActivityEntry,
+  type Decision,
+  type InternActivity,
+  type QueueEntry,
+  type SupervisionLink,
+  type SupervisorQueue,
+} from '../supervise/api';
 import { acceptCoordinatorInvite } from '../coordinate/api';
 import { supabaseRpc } from '../sync/supabase';
 import { useSync } from '../sync/SyncProvider';
@@ -77,7 +89,7 @@ export function SupervisePage() {
   const gate = useGate();
   return (
     <Frame>
-      <PageHeader title="Entries to verify">Entries and case reports your interns submitted to you. Verify, adjust the level you observed, or return with a comment.</PageHeader>
+      <PageHeader title="Your interns">Requests waiting for your sign-off and the activity of each intern you supervise. Verify, adjust the level you observed, or return with a comment.</PageHeader>
       {gate ?? <Queue />}
     </Frame>
   );
@@ -87,6 +99,9 @@ function Queue() {
   const sync = useSync();
   const toast = useToast();
   const [queue, setQueue] = useState<SupervisorQueue | null>(null);
+  const [activity, setActivity] = useState<InternActivity[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [tab, setTab] = useState<'requests' | 'activity'>('requests');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -94,7 +109,9 @@ function Queue() {
     setLoading(true);
     setError(null);
     try {
-      setQueue(await loadQueue(supabaseRpc));
+      const [q, a] = await Promise.all([loadQueue(supabaseRpc), loadActivity(supabaseRpc)]);
+      setQueue(q);
+      setActivity(a);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load your queue.');
     } finally {
@@ -118,6 +135,10 @@ function Queue() {
   }
   if (!queue) return <p className="text-ink-2">Loading your queue…</p>;
 
+  const waiting = (l: SupervisionLink) =>
+    queue.entries.filter((e) => e.supervisorId === l.supervisorId).length + queue.caseReports.filter((r) => r.supervisorId === l.supervisorId).length;
+  const link = queue.links.find((l) => l.supervisorId === selected) ?? queue.links[0];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
@@ -128,15 +149,61 @@ function Queue() {
         </button>
       </div>
       {queue.links.length > 0 && <PushReminders audience="supervisor" />}
-      {queue.links.length === 0 ? (
+      {!link ? (
         <div className="card p-5">
           <h2 className="mb-1 text-lg font-semibold">No interns linked yet</h2>
-          <p className="mb-4 text-sm text-ink-2">Ask your intern to invite you from their logbook (Rotations &amp; supervisors). Enter the code they show you.</p>
+          <p className="mb-4 text-sm text-ink-2">
+            Your training centre's administrator links you to your interns using this email address. An intern can also invite you from their logbook (Rotations &amp; supervisors);
+            enter the code they show you.
+          </p>
           <AcceptCode onAccepted={refresh} />
         </div>
       ) : (
         <>
-          {queue.links.map((link) => (
+          {queue.links.length > 1 && (
+            <ul className="grid gap-2 sm:grid-cols-2" aria-label="Your interns">
+              {queue.links.map((l) => {
+                const a = activity.find((x) => x.supervisorId === l.supervisorId);
+                const n = waiting(l);
+                const current = l.supervisorId === link.supervisorId;
+                return (
+                  <li key={l.supervisorId}>
+                    <button
+                      type="button"
+                      aria-pressed={current}
+                      onClick={() => setSelected(l.supervisorId)}
+                      className="card w-full p-3 text-left transition-colors"
+                      style={current ? { borderColor: 'var(--ink)' } : undefined}
+                    >
+                      <div className="flex items-baseline gap-2">
+                        <span className="flex-1 font-semibold">{l.internName ?? 'Intern'}</span>
+                        {n > 0 && (
+                          <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: 'var(--warning)', color: 'var(--warning-ink)' }}>
+                            {n} to verify
+                          </span>
+                        )}
+                      </div>
+                      <div className="mt-0.5 text-xs text-ink-2">
+                        {a?.summary.lastOn ? `Last entry ${fmtDate(a.summary.lastOn)} · ${a.summary.last7Days} in the last 7 days` : 'Nothing submitted to you yet'}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <Segmented
+            label={`View for ${link.internName ?? 'intern'}`}
+            value={tab}
+            onChange={setTab}
+            options={[
+              { value: 'requests', label: `Requests (${waiting(link)})` },
+              { value: 'activity', label: 'Activity' },
+            ]}
+          />
+
+          {tab === 'requests' ? (
             <InternQueue
               key={link.supervisorId}
               link={link}
@@ -146,7 +213,10 @@ function Queue() {
                 refresh();
               }}
             />
-          ))}
+          ) : (
+            <InternActivityView link={link} activity={activity.find((a) => a.supervisorId === link.supervisorId)} />
+          )}
+
           <details className="card p-4">
             <summary className="cursor-pointer text-sm font-medium">Add another intern with an invite code</summary>
             <div className="mt-3">
@@ -156,6 +226,99 @@ function Queue() {
         </>
       )}
     </div>
+  );
+}
+
+const ENTRY_STATUS: Record<string, { label: string; color: string; bg: string }> = {
+  submitted: { label: 'Waiting for you', color: 'var(--warning-ink)', bg: 'var(--warning)' },
+  returned: { label: 'Returned', color: 'var(--critical-ink)', bg: 'var(--critical)' },
+  verified: { label: 'Verified', color: 'var(--good-ink)', bg: 'var(--good)' },
+  locked: { label: 'Verified', color: 'var(--good-ink)', bg: 'var(--good)' },
+};
+
+function StatusPill({ status }: { status: string }) {
+  const s = ENTRY_STATUS[status] ?? { label: status, color: 'var(--ink-2)', bg: 'var(--surface-2)' };
+  return (
+    <span className="inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap" style={{ color: s.color, background: s.bg }}>
+      {s.label}
+    </span>
+  );
+}
+
+/** Everything the intern submitted to this supervisor, newest first: what is waiting, what was returned, what was verified. */
+function InternActivityView({ link, activity }: { link: SupervisionLink; activity: InternActivity | undefined }) {
+  const name = link.internName ?? 'This intern';
+  if (!activity || activity.summary.total + activity.caseReports.length === 0) {
+    return <ToneNote tone="neutral">{name} has not submitted anything to you yet.</ToneNote>;
+  }
+  const s = activity.summary;
+  const byDate = new Map<string, ActivityEntry[]>();
+  for (const e of activity.entries) byDate.set(e.performedOn, [...(byDate.get(e.performedOn) ?? []), e]);
+  const tiles: [string, number][] = [
+    ['Waiting for you', s.submitted],
+    ['Returned to intern', s.returned],
+    ['Verified', s.verified],
+    ['Last 7 days', s.last7Days],
+  ];
+  return (
+    <section aria-label={`Activity of ${name}`} className="space-y-5">
+      <div>
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-3">
+          <h2 className="text-xl font-semibold">{name}</h2>
+          {s.lastOn && <span className="text-sm text-ink-2">Last entry {fmtDate(s.lastOn)}</span>}
+        </div>
+        <dl className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {tiles.map(([label, value]) => (
+            <div key={label} className="card p-3">
+              <dt className="text-xs text-ink-2">{label}</dt>
+              <dd className="tabular text-2xl font-semibold">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+
+      {activity.caseReports.length > 0 && (
+        <div>
+          <h3 className="eyebrow mb-2">Case reports</h3>
+          <ul className="card divide-y divide-line">
+            {activity.caseReports.map((r) => (
+              <li key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                <span className="w-24 shrink-0 text-ink-2">{fmtDate(r.date)}</span>
+                <span className="min-w-0 flex-1 truncate">{r.title}</span>
+                <StatusPill status={r.status} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {[...byDate.entries()].map(([date, list]) => (
+        <div key={date}>
+          <h3 className="eyebrow mb-2">{fmtDate(date)}</h3>
+          <ul className="card divide-y divide-line">
+            {list.map((e) => (
+              <li key={e.id} className="px-3 py-2 text-sm">
+                <div className="flex items-start gap-3">
+                  <span className="code w-16 shrink-0 font-semibold">{e.requirementCode}</span>
+                  <span className="min-w-0 flex-1">
+                    {summaryOf(e) || 'Logbook entry'} <span className="text-ink-2">· L{e.levelClaimed} claimed</span>
+                  </span>
+                  <StatusPill status={e.status} />
+                </div>
+                {e.decision && (
+                  <div className="mt-1 text-xs text-ink-2 sm:pl-19">
+                    {e.decision.decision === 'verified' ? 'Verified' : 'Returned'} {fmtDate(e.decision.signedAt.slice(0, 10))}
+                    {e.decision.levelObserved ? ` at L${e.decision.levelObserved}` : ''}
+                    {e.decision.comment ? ` — “${e.decision.comment}”` : ''}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {s.total > activity.entries.length && <p className="text-xs text-ink-3">Showing the latest {activity.entries.length} of {s.total} entries.</p>}
+    </section>
   );
 }
 

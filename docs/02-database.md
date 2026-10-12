@@ -37,6 +37,8 @@ In the MVP every row belongs to one intern (`owner_id = auth.uid()`). The facili
 | `verification` | Supervisor decision on a logbook entry **or** a case report (exactly one) | **Append-only**; a returned decision requires a comment; sets the target's status |
 | `case_report` | Case report (5.x.5): title, date, linked visits, sections (JSON) | Status set only by verifications; content locked once verified |
 | `treatment_plan` | Per-patient plan with items (JSON): phase, treatment, teeth, status, stage, handover note | Owner-only; synced through the `sync_table` registry |
+| `app_admin` | Administrators, by email | No direct access; the first is added with SQL; at least one is kept |
+| `supervisor_account` | Supervisors an administrator registered (email, name, role, reg. no.) | No direct access; through the `admin_*` functions only. `supervisor.account_id` points here; `user_id` is set when that email signs in |
 | `supervisor_invite` | One-time code linking a supervisor record to the supervisor's account | Only the SHA-256 of the code is stored; single use, 7-day expiry |
 | `coordinator_invite` | One-time code an intern creates to share progress | Hash only; single use, 7-day expiry |
 | `coordinator_share` | Intern → coordinator sharing, with the coordinator's email shown to the intern | Revocable; the coordinator reads aggregates through `coordinator_cohort()` only |
@@ -64,7 +66,7 @@ Common columns on synced tables:
 | `entry_guard` (`logbook_entry`) | Only a supervisor verification (`app.verifying = on`) can set `verified`/`locked`. A verified entry's code, date, patient no., site, level and status cannot change; the reason given is "add a correction instead". |
 | `verification_append_only`, `audit_append_only` | Updates and deletes are refused, even for administrators |
 | `child_owner` | Encounter children inherit the caller as owner |
-| `on_auth_user_created` | Creates the profile |
+| `on_auth_user_created` | Creates the profile, and links supervisor records an administrator assigned to that email |
 
 ## Row-level security
 
@@ -79,6 +81,8 @@ Common columns on synced tables:
 RLS is `forced`, so it also applies to the table owner role through PostgREST. The tests cover cross-account reads, overwriting another intern's record by guessing its ID, and ownership spoofing.
 
 **V1 additions:** a supervisor policy (entries where `supervisor.user_id = auth.uid()`, with only the source encounter visible), a coordinator policy (counts only, masked patient numbers), and `verify_entry()` as a security-definer function that sets `app.verifying`, appends to the hash chain and updates the entry status.
+
+**Administrator route:** `is_admin()`, `admin_overview()`, `admin_register_supervisor()`, `admin_remove_supervisor()`, `admin_link_supervisor()`, `admin_unlink_supervisor()`, `admin_add_admin()` and `admin_remove_admin()` are security-definer functions that refuse any caller not in `app_admin`. Linking sets `supervisor.account_id`, `user_id` and `linked_at` under `app.linking`, the only way those columns change; a device push cannot alter them. `supervisor_activity()` returns, for the caller's links, counts by status and the latest 60 non-draft entries submitted to them with the latest decision.
 
 ## Running locally
 
