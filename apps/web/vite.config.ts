@@ -32,6 +32,8 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,woff2}'],
         navigateFallback: '/index.html',
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Shows daily reminder notifications (public/push-handler.js).
+        importScripts: ['push-handler.js'],
       },
     }),
   ],

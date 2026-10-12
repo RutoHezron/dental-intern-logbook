@@ -1,6 +1,7 @@
 import { CloudCheck, LogOut, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { EmailSignIn } from '../components/EmailSignIn';
+import { PushReminders } from '../components/PushReminders';
 import { Section, ToneNote, useToast } from '../components/ui';
 import { useInternship } from '../state/AppData';
 import { useSync } from '../sync/SyncProvider';
@@ -73,6 +74,9 @@ export function AccountSync() {
               <LogOut size={16} aria-hidden="true" /> Sign out
             </button>
           </div>
+        </div>
+        <div className="mt-4 border-t border-line pt-4">
+          <PushReminders />
         </div>
         {sync.errors > 0 && (
           <div className="mt-3">

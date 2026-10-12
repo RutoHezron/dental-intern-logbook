@@ -133,6 +133,10 @@ Use **Print / PDF** to save or print, and the CSV buttons for spreadsheets. **Fi
 
 **Portfolio** assembles your internship from your records: overview, totals, a month-by-month timeline, procedure portfolio, rotation performance, competency development, strengths, areas to develop, and highlights from your diary. The **draft reflection** is built only from your data, and each sentence shows what it is based on. Edit it into your own words; nothing is submitted automatically.
 
+## Daily reminders
+
+Signed in, open **Settings → Account & sync → Turn on daily reminders** and allow notifications. You get at most one a day, only when something needs you: entries returned by your supervisor, entries waiting more than a week, or a few days with nothing logged. Reminders show counts only, never patient details. Supervisors can turn them on from their queue to hear when entries are waiting. (The Android app shows its reminders on the Today screen instead.)
+
 ## Sharing progress with your coordinator
 
 In **Settings → Share progress with your coordinator**, tap **Create a sharing code** and let your coordinator scan it (or send the link). They sign in with their email and from then on see your progress: verified entries toward the minimums, codes behind pace, assessment forms held and due, case reports and returned entries. They do **not** see patient numbers, teeth, visits, your diary or reports. Settings lists everyone who can see your progress; **Stop sharing** ends it at once.

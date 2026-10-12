@@ -42,6 +42,7 @@ location /assets/ { add_header Cache-Control "public, max-age=31536000, immutabl
 |---|---|
 | `VITE_SUPABASE_URL` | Project API URL; leave empty for a local-only build |
 | `VITE_SUPABASE_ANON_KEY` | Public anon key (safe in the client; access is enforced by RLS) |
+| `VITE_VAPID_PUBLIC_KEY` | Optional: public key for daily push reminders (see below). Without it the reminder toggle is hidden |
 
 Never put the **service-role** key in the web app.
 
@@ -81,6 +82,34 @@ npx supabase start
 | API | http://localhost:54321 |
 | Studio | http://localhost:54323 |
 | Email viewer (sign-in codes) | http://localhost:54324 |
+
+### Daily push reminders (optional)
+
+Reminders carry counts and an in-app link only, at most one per device per day.
+
+1. Generate a key pair: `npx web-push generate-vapid-keys`. Put the public key in `VITE_VAPID_PUBLIC_KEY` and rebuild the web app.
+2. Deploy the sender and set its secrets:
+
+   ```bash
+   npx supabase functions deploy send-reminders
+   ```
+
+   ```bash
+   npx supabase secrets set VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=mailto:you@example.org CRON_SECRET=…
+   ```
+
+3. Schedule it once a day, for example 12:00 UTC (15:00 in Kenya), with Supabase Cron (Integrations → Cron) or SQL using `pg_cron` and `pg_net`:
+
+   ```sql
+   select cron.schedule('send-reminders', '0 12 * * *', $$
+     select net.http_post(
+       url := 'https://<project-ref>.supabase.co/functions/v1/send-reminders',
+       headers := jsonb_build_object('Authorization', 'Bearer <CRON_SECRET>')
+     )
+   $$);
+   ```
+
+The function returns only counts (`due`, `sent`, `gone`, `failed`); it never logs endpoints or notification text. Subscriptions the browser has dropped are deleted, and so are those failing five days running.
 
 ## 3. Backups and recovery
 

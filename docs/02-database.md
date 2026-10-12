@@ -14,6 +14,7 @@ Postgres via Supabase. The migrations are in `supabase/migrations/` and are test
 | `20261008000800_treatment_plans.sql` | Treatment plans; sync reads its table list from the `sync_table` registry |
 | `20261012000900_supervisor_accounts.sql` | Invites, supervisor read access, `supervisor_queue`, `supervisor_sign`, owner-filtered pull |
 | `20261012001000_coordinator_shares.sql` | Opt-in progress sharing with coordinators; `coordinator_cohort()` returns aggregates only |
+| `20261012001100_push_reminders.sql` | Push subscriptions, `reminder_digest`, `push_due`, `push_report` |
 
 ## Personal mode
 
@@ -39,6 +40,7 @@ In the MVP every row belongs to one intern (`owner_id = auth.uid()`). The facili
 | `supervisor_invite` | One-time code linking a supervisor record to the supervisor's account | Only the SHA-256 of the code is stored; single use, 7-day expiry |
 | `coordinator_invite` | One-time code an intern creates to share progress | Hash only; single use, 7-day expiry |
 | `coordinator_share` | Intern → coordinator sharing, with the coordinator's email shown to the intern | Revocable; the coordinator reads aggregates through `coordinator_cohort()` only |
+| `push_subscription` | A browser's push endpoint and keys, per account | Owner-only; sender functions are service-role only; dropped or failing subscriptions are deleted |
 | `assessment` | Rotation forms and internship forms (5.8, 5.9) | One live form per slot; grades and answers as JSON keyed by form item |
 | `reflection` | Reflection diary | |
 | `report_snapshot` | Finalised report | SHA-256 checked as 64 hex characters |

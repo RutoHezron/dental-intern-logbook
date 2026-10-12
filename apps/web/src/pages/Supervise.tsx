@@ -3,6 +3,7 @@ import { Check, LogOut, PenLine, RefreshCw, ShieldCheck, UserCheck } from 'lucid
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { EmailSignIn } from '../components/EmailSignIn';
+import { PushReminders } from '../components/PushReminders';
 import { PageHeader, ToneNote, useToast } from '../components/ui';
 import { fmtDate } from '../lib/format';
 import { useAppData } from '../state/AppData';
@@ -126,6 +127,7 @@ function Queue() {
           <RefreshCw size={16} aria-hidden="true" /> Refresh
         </button>
       </div>
+      {queue.links.length > 0 && <PushReminders audience="supervisor" />}
       {queue.links.length === 0 ? (
         <div className="card p-5">
           <h2 className="mb-1 text-lg font-semibold">No interns linked yet</h2>
