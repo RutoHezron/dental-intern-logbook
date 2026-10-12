@@ -5,7 +5,8 @@
   "description": "Digital Dental Internship Logbook, Clinical Diary & Progressive Reporting Platform",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "firebase/functions"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
