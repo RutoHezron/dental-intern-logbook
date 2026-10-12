@@ -30,7 +30,7 @@ An intern logs a visit in under a minute: patient number, teeth, procedure, thei
 | **Assessment forms** | Monthly, mid-rotation, end-of-rotation (graded 0–3, with reasons required for 0 or 1) and overall assessments for every rotation. Identity and dates are pre-filled, the supervisor's progress remark can be drafted from the logbook, a progress snapshot is attached as evidence, due dates and status are tracked, and forms print in the book's layout. |
 | **Case reports** | Ten per rotation, as the logbook expects. Started from a patient's visits, the facts (age and sex, complaint, findings, investigations, diagnosis, procedures with dates and levels, referral) are drafted without copying the hospital number; the intern writes the discussion. Verified with the same PIN sign-off and hash chain as logbook entries, locked once verified, and filling the printed *Log of Case Reports*. |
 | **End of internship** | 5.8 End of internship evaluation and 5.9 Verification of completion, pre-filled with identity and the rotation dates from the calendar (including extensions), plus a *Ready for KMPDC?* checklist: rotations finished, forms complete, every rotation recorded as completed, minimums met, and no entries left open. |
-| **Android app** | The same app wrapped with Capacitor (`apps/web/android`). Data stays in app-private storage, and Android cloud backup is disabled. |
+| **Android app** | The same app wrapped with Capacitor, kept separately in `apps/mobile`. Data stays in app-private storage, and Android cloud backup is disabled. |
 | **Treatment plans & handover** | A phased plan per patient (urgent, disease control, definitive, maintenance, review) built from treatments and teeth, never from logbook codes. Logging a visit updates matching items, including root canal stages; the plan is closed only by the intern. Before a returning patient's visit a next-visit brief shows the last visit, work in progress, what is planned next and alerts. **Today** lists overdue and due items, and **Handover** lists patients with unfinished treatment before the rotation ends, with a note and receiving intern, and prints. |
 | **Sync (optional)** | Outbox-based offline sync to Supabase/Postgres with email one-time-code sign-in. Status shows synced, pending or error. |
 
@@ -42,6 +42,7 @@ packages/core   Domain engine (pure TypeScript): KMPDC catalogue, mapping and co
                 insights, reports, portfolio, CSV export, sync wire format,
                 synthetic demo internship.
 apps/web        React PWA: screens, IndexedDB store (Dexie), repository, sync engine.
+apps/mobile     Android app (Capacitor): native project in android/, packages the apps/web build.
 supabase/       Postgres migrations (schema, row-level security, sync functions), CLI config.
 packages/db     Migration tests: runs supabase/migrations in PGlite (Postgres in WASM).
 docs/           Proposal, architecture, database, sync API, deployment, user guide, security.
@@ -91,25 +92,27 @@ The output in `apps/web/dist` is static files. See [docs/04-deployment.md](docs/
 
 ### Android app
 
-Requirements: Android Studio, which provides the SDK and Java.
+The Android app lives in `apps/mobile`, separate from the web app; it packages the `apps/web` build.
+
+Requirements: Android Studio, which provides the SDK, and a Java 21 JDK (Gradle 8.14 cannot run on the Java 25 that recent Android Studio versions bundle; set it under Settings → Build Tools → Gradle → Gradle JDK).
 
 To build the web app, copy it into the Android project and open it in Android Studio:
 
 ```bash
-npm run android:sync -w @logbook/web
+npm run android:sync
 ```
 
 ```bash
-npm run android:open -w @logbook/web
+npm run android:open
 ```
 
-Then use **Run** or **Build → Build APK(s)**. From the command line, with `JAVA_HOME` pointing at Android Studio's `jbr` folder:
+Then use **Run** or **Build → Build APK(s)**. From the command line, with `JAVA_HOME` pointing at the Java 21 JDK:
 
 ```bash
-npm run android:apk -w @logbook/web
+npm run android:apk
 ```
 
-The debug APK is written to `apps/web/android/app/build/outputs/apk/debug/app-debug.apk`. The first build downloads Gradle and the Android build tools, about 500 MB.
+The debug APK is written to `apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk`. The first build downloads Gradle and the Android build tools, about 500 MB.
 
 ### Optional: local sync server
 

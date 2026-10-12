@@ -107,7 +107,7 @@ The phone is the system of record for the intern; the server is optional.
 | Concern | Design |
 |---|---|
 | First launch | `initDeviceStorage()` opens the IndexedDB database, records the setup date and calls `navigator.storage.persist()`. In the native app, storage is app-private and never evicted. Onboarding confirms "Storage is ready on this phone". |
-| Native shell | Capacitor 8 (`apps/web/android`) wraps the same build. The service worker registers only on the web. |
+| Native shell | Capacitor 8 in its own workspace (`apps/mobile`, native project in `apps/mobile/android`) packages the `apps/web` build. The service worker registers only on the web. |
 | Backups | Native: automatic daily JSON backup to `Documents/DentalLogbook`, only when data changed, last 7 kept, falling back to app storage, restorable from Settings. Web: share sheet or download, with a 7-day reminder. Demo data is never backed up. |
 | Privacy | Android system cloud backup and device transfer are disabled, so data leaves the phone only through the intern's own backups or sync. |
 
