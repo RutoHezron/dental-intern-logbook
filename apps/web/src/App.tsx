@@ -92,7 +92,7 @@ const routes: RouteObject[] = [
 
 export function App() {
   // Created on mount so it reads the current URL (matters for tests and deep links).
-  const [router] = useState(() => createBrowserRouter(routes));
+  const [router] = useState(() => createBrowserRouter(routes, { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' }));
   return (
     <AppDataProvider>
       <ThemeSync />

@@ -130,7 +130,7 @@ export function Shell() {
       {/* Desktop sidebar */}
       <aside className="no-print fixed inset-y-0 left-0 hidden w-64 flex-col bg-graphite px-4 py-5 text-white lg:flex">
         <div className="mb-6 flex items-center gap-2.5 px-2">
-          <img src="/icon.svg" alt="" width={30} height={30} />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={30} height={30} />
           <div>
             <div className="font-display text-[17px] font-semibold leading-tight">Intern Logbook</div>
             <div className="text-[11px] text-white/55">Dental · KMPDC 3rd ed.</div>
@@ -162,7 +162,7 @@ export function Shell() {
       {/* Mobile top bar */}
       <header className="no-print sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-paper/90 px-4 py-2.5 backdrop-blur lg:hidden">
         <div className="flex min-w-0 items-center gap-2">
-          <img src="/icon.svg" alt="" width={24} height={24} />
+          <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={24} height={24} />
           <CurrentRotation />
         </div>
         <SyncStatus />

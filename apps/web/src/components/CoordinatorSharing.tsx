@@ -1,7 +1,7 @@
 import { Eye, EyeOff, QrCode } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { createCoordinatorInvite, myShares, revokeShare, type CoordinatorShare } from '../coordinate/api';
-import { fmtDate } from '../lib/format';
+import { appUrl, fmtDate } from '../lib/format';
 import { supabaseRpc } from '../sync/supabase';
 import { useSync } from '../sync/SyncProvider';
 import { InviteCard } from './SupervisorInvite';
@@ -71,7 +71,7 @@ export function CoordinatorSharing({ demo }: { demo: boolean }) {
             <InviteCard
               code={invite.code}
               expiresAt={invite.expiresAt}
-              link={`${window.location.origin}/join?kind=coordinator&code=${encodeURIComponent(invite.code)}`}
+              link={`${appUrl()}join?kind=coordinator&code=${encodeURIComponent(invite.code)}`}
               qrLabel="QR code for your coordinator"
             >
               Ask your coordinator to scan this, or send them the link. They sign in with their email and will see your progress from then on.

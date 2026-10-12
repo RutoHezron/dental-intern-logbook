@@ -70,3 +70,8 @@ export function downloadText(filename: string, text: string, type = 'text/csv') 
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** The app's full address, ending in '/' (it may be served from a subfolder, e.g. on GitHub Pages). */
+export function appUrl(): string {
+  return new URL(import.meta.env.BASE_URL, window.location.origin).href;
+}

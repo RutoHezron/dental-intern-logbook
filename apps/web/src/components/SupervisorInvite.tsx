@@ -6,7 +6,7 @@ import { Link } from 'react-router';
 import { createInvite, inviteLink, unlinkSupervisor } from '../supervise/api';
 import { supabaseRpc } from '../sync/supabase';
 import { useSync } from '../sync/SyncProvider';
-import { fmtDate } from '../lib/format';
+import { appUrl, fmtDate } from '../lib/format';
 import { ToneNote, useToast } from './ui';
 
 /**
@@ -82,7 +82,7 @@ export function SupervisorInvite({ supervisor, demo }: { supervisor: Supervisor;
           ) : error ? (
             <ToneNote tone="critical">{error}</ToneNote>
           ) : invite ? (
-            <InviteCard code={invite.code} expiresAt={invite.expiresAt} link={inviteLink(window.location.origin, invite.code)} qrLabel={`QR code for ${supervisor.name}'s invite`}>
+            <InviteCard code={invite.code} expiresAt={invite.expiresAt} link={inviteLink(appUrl(), invite.code)} qrLabel={`QR code for ${supervisor.name}'s invite`}>
               Ask <strong>{supervisor.name}</strong> to scan this with their phone camera, or to open the link and sign in. They can then verify what you submit to them from anywhere.
             </InviteCard>
           ) : null}

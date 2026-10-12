@@ -63,7 +63,7 @@ export function OnboardingPage() {
       <div className="mx-auto grid max-w-[1100px] gap-10 px-5 py-10 lg:grid-cols-[1.1fr_1fr] lg:py-16">
         <section>
           <div className="flex items-center gap-2.5">
-            <img src="/icon.svg" alt="" width={36} height={36} />
+            <img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width={36} height={36} />
             <span className="eyebrow">Dental internship logbook</span>
           </div>
           <h1 className="mt-6 text-[40px] font-semibold leading-[1.05] sm:text-[52px]">

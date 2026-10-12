@@ -68,7 +68,7 @@ describe('service worker push handler', () => {
     const openWindow = vi.fn(async () => undefined);
     const self = {
       addEventListener: (type: string, fn: (e: unknown) => void) => (handlers[type] = fn),
-      registration: { showNotification },
+      registration: { showNotification, scope: 'https://logbook.example.org/' },
       location: { origin: 'https://logbook.example.org' },
       clients: { matchAll: vi.fn(async () => [{ focus, navigate }]), openWindow },
     };

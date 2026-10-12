@@ -115,6 +115,7 @@ export function formatInviteCode(raw: string): string {
   return c.match(/.{1,4}/g)?.join('-') ?? '';
 }
 
-export function inviteLink(origin: string, code: string): string {
-  return `${origin}/join?code=${encodeURIComponent(code)}`;
+/** `appBase` is the app's full URL ending in '/', e.g. https://user.github.io/dental-intern-logbook/. */
+export function inviteLink(appBase: string, code: string): string {
+  return `${appBase}join?code=${encodeURIComponent(code)}`;
 }

@@ -11,8 +11,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'Logbook reminder', {
       body: data.body || 'Open your logbook.',
-      icon: '/icon.svg',
-      badge: '/icon.svg',
+      icon: new URL('icon.svg', self.registration.scope).href,
+      badge: new URL('icon.svg', self.registration.scope).href,
       tag: data.tag || 'logbook-daily',
       data: { url: typeof data.url === 'string' ? data.url : '/' },
     }),
@@ -21,7 +21,9 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = new URL((event.notification.data && event.notification.data.url) || '/', self.location.origin);
+  // In-app paths are relative to where the app is served (it may live in a subfolder).
+  const path = ((event.notification.data && event.notification.data.url) || '/').replace(/^\//, '');
+  const target = new URL(path, self.registration.scope);
   // Only ever open this app.
   if (target.origin !== self.location.origin) return;
   event.waitUntil(
