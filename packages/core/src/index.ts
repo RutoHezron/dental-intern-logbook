@@ -19,6 +19,7 @@ export * from './analytics/dataset-index';
 export * from './analytics/periods';
 export * from './analytics/stats';
 export * from './analytics/progress';
+export * from './analytics/cohort';
 export * from './analytics/insights';
 export * from './analytics/timeline';
 export * from './analytics/reports';

@@ -88,7 +88,8 @@ export function requirementProgress(ix: DatasetIndex, asOf: ISODate, filter?: { 
   return [...byCode.values()];
 }
 
-function statusFor(p: RequirementProgress, asOf: ISODate): ProgressStatus {
+/** Status of one code from its counts and its rotation dates (shared with the cohort view). */
+export function statusFor(p: RequirementProgress, asOf: ISODate): ProgressStatus {
   const min = p.requirement.minCount;
   if (p.verified >= min) return 'met';
   const r = p.rotation;

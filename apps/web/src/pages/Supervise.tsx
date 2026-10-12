@@ -7,6 +7,7 @@ import { PageHeader, ToneNote, useToast } from '../components/ui';
 import { fmtDate } from '../lib/format';
 import { useAppData } from '../state/AppData';
 import { acceptInvite, formatInviteCode, loadQueue, signDecisions, type Decision, type QueueEntry, type SupervisionLink, type SupervisorQueue } from '../supervise/api';
+import { acceptCoordinatorInvite } from '../coordinate/api';
 import { supabaseRpc } from '../sync/supabase';
 import { useSync } from '../sync/SyncProvider';
 import { CaseReportReview, EntryReview, type Draft } from './SignOff';
@@ -17,13 +18,13 @@ import { CaseReportReview, EntryReview, type Draft } from './SignOff';
  * Nothing is stored on this device except the sign-in.
  */
 
-function Frame({ children }: { children: ReactNode }) {
+export function Frame({ children, role = 'Supervisor' }: { children: ReactNode; role?: string }) {
   const sync = useSync();
   return (
     <div className="min-h-dvh bg-paper">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
-          <span className="eyebrow flex-1">Dental internship logbook · Supervisor</span>
+          <span className="eyebrow flex-1">Dental internship logbook · {role}</span>
           {sync.email && (
             <button type="button" className="btn btn-ghost text-sm" onClick={() => sync.signOut()}>
               <LogOut size={16} aria-hidden="true" /> Sign out
@@ -40,7 +41,7 @@ function Frame({ children }: { children: ReactNode }) {
  * Supervisor sign-in must never happen on a phone that holds an intern's
  * logbook: the logbook would start syncing into the supervisor's account.
  */
-function useGate(): ReactNode | null {
+export function useGate(): ReactNode | null {
   const sync = useSync();
   const { loaded, ix, state } = useAppData();
   if (!sync.configured) {
@@ -50,7 +51,7 @@ function useGate(): ReactNode | null {
   if (ix && !state?.demo) {
     return (
       <ToneNote tone="warning">
-        This device holds {ix.ds.internship.internName}'s logbook, so supervisor review is not available on it. Review from your own phone or computer, or sign here with your PIN
+        This device holds {ix.ds.internship.internName}'s logbook, so supervisor and coordinator sign-in is not available on it. Review from your own phone or computer, or sign here with your PIN
         using{' '}
         <Link to="/sign-off" className="font-medium underline underline-offset-2">
           Supervisor sign-off
@@ -62,8 +63,8 @@ function useGate(): ReactNode | null {
   if (!sync.email) {
     return (
       <div className="card p-5">
-        <h2 className="mb-1 text-lg font-semibold">Sign in to review</h2>
-        <p className="mb-4 text-sm text-ink-2">Use the email address you will review with. We send you a 6-digit code — no password.</p>
+        <h2 className="mb-1 text-lg font-semibold">Sign in to continue</h2>
+        <p className="mb-4 text-sm text-ink-2">Use your work email address. We send you a 6-digit code — no password.</p>
         <EmailSignIn />
       </div>
     );
@@ -293,7 +294,17 @@ function InternQueue({ link, queue, onSigned }: { link: SupervisionLink; queue: 
   );
 }
 
-function AcceptCode({ initial = '', onAccepted }: { initial?: string; onAccepted: (r: { supervisorName: string; internName: string | null }) => void }) {
+type Accepted = { supervisorName: string; internName: string | null };
+
+export function AcceptCode({
+  initial = '',
+  accept = (code: string) => acceptInvite(supabaseRpc, code),
+  onAccepted,
+}: {
+  initial?: string;
+  accept?: (code: string) => Promise<Accepted>;
+  onAccepted: (r: Accepted) => void;
+}) {
   const [code, setCode] = useState(formatInviteCode(initial));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -302,7 +313,7 @@ function AcceptCode({ initial = '', onAccepted }: { initial?: string; onAccepted
     setBusy(true);
     setError(null);
     try {
-      onAccepted(await acceptInvite(supabaseRpc, code));
+      onAccepted(await accept(code));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not accept the invite.');
     } finally {
@@ -342,6 +353,28 @@ export function JoinPage() {
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const toast = useToast();
+  if (params.get('kind') === 'coordinator') {
+    return (
+      <Frame role="Coordinator">
+        <PageHeader title="Accept an invite">An intern has chosen to share their logbook progress with you as their internship coordinator.</PageHeader>
+        {gate ?? (
+          <div className="card p-5">
+            <AcceptCode
+              initial={params.get('code') ?? ''}
+              accept={async (code) => {
+                const r = await acceptCoordinatorInvite(supabaseRpc, code);
+                return { internName: r.internName, supervisorName: '' };
+              }}
+              onAccepted={(r) => {
+                toast(`${r.internName ?? 'The intern'} now shares their progress with you`);
+                navigate('/cohort', { replace: true });
+              }}
+            />
+          </div>
+        )}
+      </Frame>
+    );
+  }
   return (
     <Frame>
       <PageHeader title="Accept an invite">An intern has asked you to verify their logbook entries from your own phone or computer.</PageHeader>

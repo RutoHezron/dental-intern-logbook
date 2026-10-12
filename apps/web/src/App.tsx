@@ -35,6 +35,7 @@ const SignOffPage = named(() => import('./pages/SignOff'), 'SignOffPage');
 const OnboardingPage = named(() => import('./pages/Onboarding'), 'OnboardingPage');
 const SupervisePage = named(() => import('./pages/Supervise'), 'SupervisePage');
 const JoinPage = named(() => import('./pages/Supervise'), 'JoinPage');
+const CohortPage = named(() => import('./pages/Cohort'), 'CohortPage');
 
 /** Screens inside the shell need an internship; first run goes to onboarding. */
 function RequireInternship() {
@@ -46,9 +47,10 @@ function RequireInternship() {
 
 const routes: RouteObject[] = [
   { path: '/welcome', element: <OnboardingPage /> },
-  // Supervisors on their own device: no internship needed.
+  // Supervisors and coordinators on their own device: no internship needed.
   { path: '/supervise', element: <SupervisePage /> },
   { path: '/join', element: <JoinPage /> },
+  { path: '/cohort', element: <CohortPage /> },
   {
     element: <RequireInternship />,
     children: [

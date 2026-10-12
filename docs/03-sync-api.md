@@ -78,6 +78,15 @@ interface PullResult {
 | `supervisor_queue()` | Supervisor | Links (intern, the name the supervisor is listed under, chain tip) and the entries and case reports awaiting them, with visit context. Read through row-level security policies that expose only items submitted to that supervisor. |
 | `supervisor_sign(p_records)` | Supervisor | Appends `method = 'account'` verifications. Each must target an item submitted to that supervisor and still awaiting verification, and must extend the head of that supervisor's chain (checked under an advisory lock). A stale head fails with `chain_moved`; the client reloads and rebuilds once. All-or-nothing per call. |
 
+## Coordinator shares
+
+| Function | Caller | Does |
+|---|---|---|
+| `create_coordinator_invite()` | Intern | One-time code to share progress (needs the internship on the server). |
+| `accept_coordinator_invite(p_code)` | Coordinator | Starts the share; records the coordinator's email for the intern to see. |
+| `my_coordinator_shares()` / `revoke_coordinator_share(p_share)` | Intern | Who can see my progress; stop sharing. |
+| `coordinator_cohort()` | Coordinator | For each intern sharing with the caller: name, licence, facility, period, rotation dates, counts per code (logged, verified, waiting, returned, last date), assessments (kind, held on, overall grade, outcome) and case-report statuses. No entry rows, patients, visits or free text. Progress is computed in the browser with `cohortMember()` from `@logbook/core`. |
+
 The supervisor's device builds and hashes the records with the same code the intern's phone uses (`buildAccountSignatures` in `@logbook/core`); the intern's device checks every chain when it pulls them.
 
 ## Client engine

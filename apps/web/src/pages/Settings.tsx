@@ -6,6 +6,7 @@ import { PageHeader, Section, Segmented, ToneNote, useToast } from '../component
 import type { Preferences } from '../data/db';
 import { clearAll, exportBackup, loadDemo, saveFacility, saveInternship, savePreferences, saveRules } from '../data/repo';
 import { downloadText } from '../lib/format';
+import { CoordinatorSharing } from '../components/CoordinatorSharing';
 import { AccountSync } from './AccountSync';
 import { PhoneStorage } from './PhoneStorage';
 import { useInternship } from '../state/AppData';
@@ -35,6 +36,8 @@ export function SettingsPage() {
       <div id="sync">
         <AccountSync />
       </div>
+
+      <CoordinatorSharing demo={Boolean(state.demo)} />
 
       <Section title="Profile">
         <form

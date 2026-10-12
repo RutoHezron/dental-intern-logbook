@@ -1,7 +1,7 @@
 import type { Supervisor } from '@logbook/core';
 import qrcode from 'qrcode-generator';
 import { Copy, Link2, Link2Off, QrCode, Share2 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { createInvite, inviteLink, unlinkSupervisor } from '../supervise/api';
 import { supabaseRpc } from '../sync/supabase';
@@ -82,7 +82,9 @@ export function SupervisorInvite({ supervisor, demo }: { supervisor: Supervisor;
           ) : error ? (
             <ToneNote tone="critical">{error}</ToneNote>
           ) : invite ? (
-            <InviteCard name={supervisor.name} code={invite.code} expiresAt={invite.expiresAt} />
+            <InviteCard code={invite.code} expiresAt={invite.expiresAt} link={inviteLink(window.location.origin, invite.code)} qrLabel={`QR code for ${supervisor.name}'s invite`}>
+              Ask <strong>{supervisor.name}</strong> to scan this with their phone camera, or to open the link and sign in. They can then verify what you submit to them from anywhere.
+            </InviteCard>
           ) : null}
           <button type="button" className="btn btn-ghost mt-2 text-sm" onClick={() => setOpen(false)}>
             Close
@@ -93,17 +95,15 @@ export function SupervisorInvite({ supervisor, demo }: { supervisor: Supervisor;
   );
 }
 
-function InviteCard({ name, code, expiresAt }: { name: string; code: string; expiresAt: string }) {
+/** A one-time code with its QR code and link, ready to show chairside or send. */
+export function InviteCard({ code, expiresAt, link, qrLabel, children }: { code: string; expiresAt: string; link: string; qrLabel: string; children: ReactNode }) {
   const toast = useToast();
-  const link = inviteLink(window.location.origin, code);
   const canShare = typeof navigator !== 'undefined' && 'share' in navigator;
   return (
     <div className="flex flex-wrap items-start gap-4">
-      <QrSvg text={link} label={`QR code for ${name}'s invite`} />
+      <QrSvg text={link} label={qrLabel} />
       <div className="min-w-56 flex-1 space-y-2 text-sm">
-        <p>
-          Ask <strong>{name}</strong> to scan this with their phone camera, or to open the link and sign in. They can then verify what you submit to them from anywhere.
-        </p>
+        <p>{children}</p>
         <div>
           <div className="label">Invite code</div>
           <div className="code text-2xl font-semibold tracking-[0.15em]" aria-label="Invite code">
@@ -127,7 +127,7 @@ function InviteCard({ name, code, expiresAt }: { name: string; code: string; exp
             <Copy size={14} aria-hidden="true" /> Copy link
           </button>
           {canShare && (
-            <button type="button" className="btn btn-secondary text-sm" onClick={() => navigator.share({ title: 'Logbook supervisor invite', text: `Invite code ${code}`, url: link }).catch(() => {})}>
+            <button type="button" className="btn btn-secondary text-sm" onClick={() => navigator.share({ title: 'Logbook invite', text: `Invite code ${code}`, url: link }).catch(() => {})}>
               <Share2 size={14} aria-hidden="true" /> Share
             </button>
           )}

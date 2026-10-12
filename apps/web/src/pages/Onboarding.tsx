@@ -175,6 +175,11 @@ export function OnboardingPage() {
               <Link to="/supervise" className="font-medium text-ink underline underline-offset-2">
                 Review entries submitted to you
               </Link>
+              <br />
+              Internship coordinator?{' '}
+              <Link to="/cohort" className="font-medium text-ink underline underline-offset-2">
+                See your cohort
+              </Link>
             </p>
           )}
         </section>
