@@ -8,6 +8,7 @@ export * from './rules/counting';
 export * from './rules/rotations';
 export * from './rules/derive';
 export * from './rules/verification';
+export * from './rules/account-signoff';
 export * from './rules/validation';
 export * from './rules/review-checks';
 export * from './rules/assessments';

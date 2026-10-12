@@ -113,14 +113,35 @@ export interface ChainProblem {
   problem: 'hash_mismatch' | 'broken_link' | 'missing_entry';
 }
 
-/** Check the whole chain (ordered by signedAt). Detects tampered entries, case reports and verifications. */
+/**
+ * Which chain a verification belongs to. Sign-offs made on the intern's phone
+ * form one chain (the phone appends them in order, even offline). Sign-offs a
+ * supervisor makes in their own account form a separate chain per supervisor,
+ * ordered by the server, so the two can never fork each other.
+ */
+export const chainKey = (v: Pick<Verification, 'method' | 'verifierId'>): string => (v.method === 'account' ? `account:${v.verifierId}` : 'device');
+
+const chainOrder = (a: Verification, b: Verification) => a.signedAt.localeCompare(b.signedAt) || a.id.localeCompare(b.id);
+
+/** The last verification in a chain, or null for an empty chain. */
+export function chainHead(verifications: Verification[], key: string): Verification | null {
+  return verifications.filter((v) => chainKey(v) === key).sort(chainOrder).at(-1) ?? null;
+}
+
+/** Check every chain (each ordered by signedAt). Detects tampered entries, case reports and verifications. */
 export function checkVerificationChain(
   verifications: Verification[],
   entries: Map<ID, LogbookEntry>,
   caseReports: Map<ID, CaseReport> = new Map(),
 ): ChainProblem[] {
   const problems: ChainProblem[] = [];
-  const sorted = [...verifications].sort((a, b) => a.signedAt.localeCompare(b.signedAt) || a.id.localeCompare(b.id));
+  const chains = new Map<string, Verification[]>();
+  for (const v of verifications) chains.set(chainKey(v), [...(chains.get(chainKey(v)) ?? []), v]);
+  for (const chain of chains.values()) checkOneChain(chain.sort(chainOrder), entries, caseReports, problems);
+  return problems;
+}
+
+function checkOneChain(sorted: Verification[], entries: Map<ID, LogbookEntry>, caseReports: Map<ID, CaseReport>, problems: ChainProblem[]) {
   let prev: string | null = null;
   for (const v of sorted) {
     if (v.prevHash !== prev) problems.push({ verificationId: v.id, problem: 'broken_link' });
@@ -135,5 +156,4 @@ export function checkVerificationChain(
     }
     prev = v.hash;
   }
-  return problems;
 }

@@ -8,6 +8,7 @@ import {
   type CaseReport,
   validateAssessment,
   type Assessment,
+  chainHead,
   createVerification,
   hashPin,
   statusAfter,
@@ -498,8 +499,8 @@ export async function signOff(supervisorId: string, pin: string, decisions: Sign
   let verified = 0;
   let returned = 0;
   await db.transaction('rw', [db.entries, db.caseReports, db.verifications, db.outbox], async () => {
-    const all = await db.verifications.toArray();
-    let prevHash = all.sort((a, b) => a.signedAt.localeCompare(b.signedAt) || a.id.localeCompare(b.id)).at(-1)?.hash ?? null;
+    // Phone sign-offs extend the device chain; account sign-offs have their own chains.
+    let prevHash = chainHead(await db.verifications.toArray(), 'device')?.hash ?? null;
     let t = Date.now();
     for (const d of decisions) {
       if (d.caseReportId) {

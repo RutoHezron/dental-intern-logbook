@@ -193,6 +193,11 @@ export interface Supervisor {
   pinSalt?: string;
   pinHash?: string;
   pinSetAt?: ISODateTime;
+  /**
+   * The supervisor's own account, once they accept an invite (V1). Set only by
+   * the server; the device can never link or change it.
+   */
+  userId?: ID | null;
 }
 
 export interface Internship {
@@ -349,7 +354,11 @@ export interface Verification {
   decision: 'verified' | 'returned';
   levelObserved?: Level;
   comment?: string;
-  method: 'passkey' | 'pin' | 'wet_signature_scan' | 'co_located_qr' | 'demo';
+  /**
+   * pin: signed on the intern's phone. account: signed by the supervisor in
+   * their own account (each supervisor's account sign-offs form their own chain).
+   */
+  method: 'passkey' | 'pin' | 'wet_signature_scan' | 'co_located_qr' | 'demo' | 'account';
   signedAt: ISODateTime;
   prevHash: string | null;
   hash: string;

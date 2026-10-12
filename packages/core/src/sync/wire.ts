@@ -80,8 +80,21 @@ const OPAQUE = new Set(['payload', 'sections', 'responses', 'grades', 'gradeRema
 const toSnake = (k: string) => k.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
 const toCamel = (k: string) => k.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 
+/**
+ * Postgres returns timestamptz as e.g. 2025-11-03T16:00:00+00:00; the device
+ * writes 2025-11-03T16:00:00.000Z. Hashes cover the exact text (a
+ * verification's signedAt), so timestamps coming back are put in device form.
+ */
+const PG_TIMESTAMP = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(\.\d+)?([+-]\d{2}(:?\d{2})?|Z)$/;
+export function normalizeTimestamp(v: string): string {
+  if (!PG_TIMESTAMP.test(v)) return v;
+  const t = Date.parse(v.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'));
+  return Number.isNaN(t) ? v : new Date(t).toISOString();
+}
+
 function convertKeys(value: unknown, fn: (k: string) => string, dropNulls: boolean, parentKey?: string): unknown {
   if (Array.isArray(value)) return value.map((v) => convertKeys(v, fn, dropNulls));
+  if (typeof value === 'string' && fn === toCamel && parentKey?.endsWith('At')) return normalizeTimestamp(value);
   if (value === null || typeof value !== 'object') return value;
   if (parentKey && OPAQUE.has(parentKey)) return value;
   const out: Record<string, unknown> = {};
